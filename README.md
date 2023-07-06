@@ -25,7 +25,7 @@ The current implementation has the following features and functionality:
 
 This library and its features are supported on the following Infineon platforms:
 
-- [PSoC&trade; 62S2 evaluation kit (CY8CEVAL-062S2-MUR-43439M2)](https://www.infineon.com/cms/en/product/evaluation-boards/cy8ceval-062s2/)
+- [PSoC&trade; 62S2 evaluation kit (CY8CEVAL-062S2-MUR-43439M2)]( https://www.infineon.com/cms/en/product/evaluation-boards/cy8ceval-062s2/ )
 
 ## Dependent libraries
 
@@ -87,7 +87,7 @@ The VCM library disables all the debug log messages by default. To enable log me
    ```
 2. Call the `cy_log_init()` function provided by the *cy-log* module. cy-log is part of the *connectivity-utilities* library.
 
-   See [connectivity-utilities library API documentation](https://Infineon.github.io/connectivity-utilities/api_reference_manual/html/group__logging__utils.html).
+   See [connectivity-utilities library API documentation]( https://Infineon.github.io/connectivity-utilities/api_reference_manual/html/group__logging__utils.html ).
 
 ### Enable logs in dual core application
 
@@ -112,7 +112,8 @@ If you are using one of Infineon's BSPs for the connectivity application, you ca
 
 ## Additional information
 
-- [Virtual Connectivity Manager RELEASE.md](./RELEASE.md)
-- [Virtual Connectivity Manager version](./version.xml)
-- [ModusToolbox&trade; software environment, quick start guide, documentation, and videos](https://www.infineon.com/modustoolbox)
-- [ModusToolbox&trade; any cloud code examples](https://github.com/Infineon?q=mtb-example-anycloud%20NOT%20Deprecated)
+- [Virtual Connectivity Manager RELEASE.md]( ./RELEASE.md )
+- [Virtual Connectivity Manager version]( ./version.xml )
+- [Virtual Connectivity Manager API documentation]( https://infineon.github.io/virtual-connectivity-manager/api_reference_manual/html/index.html )
+- [ModusToolbox&trade; software environment, quick start guide, documentation, and videos]( https://www.infineon.com/modustoolbox )
+- [ModusToolbox&trade; any cloud code examples]( https://github.com/Infineon?q=mtb-example-anycloud%20NOT%20Deprecated )

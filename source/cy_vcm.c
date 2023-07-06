@@ -152,7 +152,7 @@ typedef struct
 #ifdef USE_VIRTUAL_API
 
 /* Process asynchronous callback */
-void process_async_cb(void *arg)
+static void process_async_cb(void *arg)
 {
     VCM_UNUSED_PARAMETER(arg);
     cy_vcm_internal_callback_t       event_cb;
@@ -353,7 +353,7 @@ exit:
 #endif /* VCM_ENABLE_MQTT */
 
 /* Process API request events from request queue */
-void process_api_request(void *arg)
+static void process_api_request(void *arg)
 {
     cy_vcm_request_t   request;
     cy_vcm_response_t  response;
@@ -635,7 +635,7 @@ void request_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
 #endif  /* !USE_VIRTUAL_API */
 
 /* Process init queue event */
-void init_queue_processing(void *arg)
+static void init_queue_processing(void *arg)
 {
     VCM_UNUSED_PARAMETER(arg);
     cy_rslt_t        result;
@@ -714,7 +714,7 @@ void init_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
 }
 
 /* Processing deinit queue */
-void deinit_queue_processing(void *arg)
+static void deinit_queue_processing(void *arg)
 {
     VCM_UNUSED_PARAMETER(arg);
     cy_vcm_event_t vcm_event;
@@ -1097,7 +1097,7 @@ cy_rslt_t cy_vcm_deinit()
     if(!is_vcm_initialized)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "%s[%d] Virtual Connectivity Manager not initialized\n", __func__, __LINE__);
-        return CY_RSLT_SUCCESS;
+        return CY_VCM_NOT_INITIALIZED;
     }
 
     result = cy_rtos_get_mutex(&init_complete_mutex, CY_VCM_MAX_MUTEX_WAIT_TIME_MS);

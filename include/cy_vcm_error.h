@@ -88,8 +88,9 @@
 #define CY_VCM_SEND_API_REQUEST_ERROR   (CY_VCM_ERROR_BASE + 2) /**< Failed to send API request over IPC. */
 #define CY_VCM_API_RESPONSE_ERROR       (CY_VCM_ERROR_BASE + 3) /**< Failed to get the API response.      */
 #define CY_VCM_BAD_ARG                  (CY_VCM_ERROR_BASE + 4) /**< Bad argument.                        */
-#define CY_VCM_WORKER_THREAD_ERROR      (CY_VCM_ERROR_BASE + 5) /**< Failed to created the worker thread  */
-#define CY_VCM_MUTEX_ERROR              (CY_VCM_ERROR_BASE + 6) /**< VCM mutex error                      */
+#define CY_VCM_WORKER_THREAD_ERROR      (CY_VCM_ERROR_BASE + 5) /**< Failed to created the worker thread. */
+#define CY_VCM_MUTEX_ERROR              (CY_VCM_ERROR_BASE + 6) /**< VCM mutex error.                     */
+#define CY_VCM_NOT_INITIALIZED          (CY_VCM_ERROR_BASE + 7) /**< VCM not initialized.                 */
 
 /** Check to see if result is success or not */
 #define CY_VCM_ERROR_CHECK(x)    do {                                                                            \
