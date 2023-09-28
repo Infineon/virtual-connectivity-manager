@@ -112,6 +112,15 @@ typedef void (*cy_vcm_internal_callback_t)(void* arg);
  */
 cy_rslt_t cy_vcm_send_api_request(cy_vcm_request_t* request, cy_vcm_response_t* response);
 
+/**
+ * This API allows us to send a notification to the primary core to free a particular address which was created in primary core.
+ * Sends a request from secondary core to the primary core along with the address to be freed.
+ *
+ * @param[in]  ptr     Pointer that should be freed by primary core
+ *
+ */
+void cy_vcm_free(void* ptr);
+
 #endif  /* ENABLE_MULTICORE_CONN_MW */
 
 #endif /* CY_VCM_INTERNAL_H */

@@ -72,12 +72,14 @@
 #define INIT_QUEUE_SIZE                    (1UL)                       /* Size of Init queue */
 #define DEINIT_QUEUE_SIZE                  (1UL)                       /* Size of De-Init queue */
 #define DEINIT_RSP_QUEUE_SIZE              (1UL)                       /* Size of De-Init response queue */
+#define FREE_QUEUE_SIZE                    (10UL)                      /* Size of free queue, used to send notifications to free a memory */
 #define ASYNC_CB_QUEUE_NUM                 (1UL)        /* Async callback queue number */
 #define REQUEST_QUEUE_NUM                  (2UL)        /* Request queue number */
 #define RESPONSE_QUEUE_NUM                 (3UL)        /* Response queue number */
 #define INIT_QUEUE_NUM                     (4UL)        /* Init queue number */
 #define DEINIT_QUEUE_NUM                   (5UL)        /* De-init queue number */
 #define DEINIT_RSP_QUEUE_NUM               (6UL)        /* De-init response queue number */
+#define FREE_QUEUE_NUM                     (7UL)        /* free queue number */
 
 #ifndef USE_VIRTUAL_API
 #define MAX_WCM_DATA_EVENTS                (10UL)       /* Maximum WCM events that can be queued at a time */
@@ -116,13 +118,13 @@ static cy_mutex_t                    vcm_async_mutex;                  /* Asynch
 #endif
 
 /* Queue objects */
-cyhal_ipc_t async_cb_queue_obj, request_queue_obj, response_queue_obj, deinit_queue_obj, deinit_rsp_queue_obj, init_queue_obj;
+cyhal_ipc_t async_cb_queue_obj, request_queue_obj, response_queue_obj, deinit_queue_obj, deinit_rsp_queue_obj, init_queue_obj, free_queue_obj;
 
 /* Queue pool pointers */
-void* async_cb_queue_pool, * request_queue_pool, *response_queue_pool, *deinit_queue_pool, *deinit_rsp_queue_pool, *init_queue_pool;
+void* async_cb_queue_pool, * request_queue_pool, *response_queue_pool, *deinit_queue_pool, *deinit_rsp_queue_pool, *init_queue_pool, *free_queue_pool;
 
 /* Queue handles */
-cyhal_ipc_queue_t* async_queue_handle, * request_queue_handle, *response_queue_handle, *deinit_queue_handle, *deinit_rsp_queue_handle, *init_queue_handle;
+cyhal_ipc_queue_t* async_queue_handle, * request_queue_handle, *response_queue_handle, *deinit_queue_handle, *deinit_rsp_queue_handle, *init_queue_handle, *free_queue_handle;
 
 static cy_vcm_hal_resource_opt_t   hal_resource_opt;             /* Should be set to CY_VCM_CREATE_HAL_RESOURCE in the core which initializes VCM first. Value should be set to CY_VCM_USE_HAL_RESOURCE in the core which initializes VCM later */
 static bool                        is_vcm_initialized;           /* Global variable to indicate whether VCM in initialized or not */
@@ -210,6 +212,50 @@ void async_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
 }
 
 #else  /* !USE_VIRTUAL_API - Primary core with implementation will run the below code */
+
+/* Process the request to free an address from free_queue */
+static void process_virtual_free(void *arg)
+{
+    cy_rslt_t result;
+    uint32_t ptr_val;
+
+    result = cy_rtos_get_mutex(&vcm_request_mutex, CY_VCM_MAX_MUTEX_WAIT_TIME_MS);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cy_rtos_get_mutex failed. res 0x%x\n", __func__, __LINE__, result);
+        return;
+    }
+    /* Read free queue to get the address to be freed */
+    result = cyhal_ipc_queue_get(&free_queue_obj, &ptr_val, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] Failed to get the address to be freed from the queue. res = 0x%x\n", __func__, __LINE__, result);
+        cy_rtos_set_mutex(&vcm_request_mutex);
+        return;
+    }
+
+    /* Call free on the address received from the queue */
+    free((void*)(ptr_val));
+
+    cy_rtos_set_mutex(&vcm_request_mutex);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cy_rtos_set_mutex failed. res = 0x%x\n", __func__, __LINE__, result);
+    }
+    return;
+}
+
+/* write event callback for free_queue */
+void free_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
+{
+    cy_rslt_t result;
+    result = cy_worker_thread_enqueue(&cy_vcm_worker_thread, process_virtual_free, NULL);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d]: cy_worker_thread_enqueue failed in request_queue_write_callback. res = 0x%x\n", __func__, __LINE__, result);
+    }
+    (void)result;
+}
 
 /* Local WCM callback event which posts the event data to the asynchronous callback queue */
 void local_wcm_event_cb(cy_wcm_event_t event, cy_wcm_event_data_t *event_data)
@@ -897,6 +943,7 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
         CYHAL_IPC_QUEUE_POOL_ALLOC(deinit_queue_pool, DEINIT_QUEUE_SIZE, sizeof(cy_vcm_event_t));
         CYHAL_IPC_QUEUE_POOL_ALLOC(deinit_rsp_queue_pool, DEINIT_RSP_QUEUE_SIZE, sizeof(cy_vcm_event_t));
         CYHAL_IPC_QUEUE_POOL_ALLOC(init_queue_pool, INIT_QUEUE_SIZE, sizeof(cy_vcm_event_t));
+        CYHAL_IPC_QUEUE_POOL_ALLOC(free_queue_pool, FREE_QUEUE_SIZE, sizeof(void*));
 
         /* Defining and allocating (shared) memory for queue handles */
         CYHAL_IPC_QUEUE_HANDLE_ALLOC(async_queue_handle);
@@ -905,6 +952,7 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
         CYHAL_IPC_QUEUE_HANDLE_ALLOC(deinit_queue_handle);
         CYHAL_IPC_QUEUE_HANDLE_ALLOC(deinit_rsp_queue_handle);
         CYHAL_IPC_QUEUE_HANDLE_ALLOC(init_queue_handle);
+        CYHAL_IPC_QUEUE_HANDLE_ALLOC(free_queue_handle);
 
         /* Associating the queue handles with appropriate queue details */
         async_queue_handle->channel_num = channel;
@@ -942,6 +990,12 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
         init_queue_handle->queue_pool = init_queue_pool;
         init_queue_handle->num_items = INIT_QUEUE_SIZE;
         init_queue_handle->item_size = sizeof(cy_vcm_event_t);
+
+        free_queue_handle->channel_num = channel;
+        free_queue_handle->queue_num = FREE_QUEUE_NUM;
+        free_queue_handle->queue_pool = free_queue_pool;
+        free_queue_handle->num_items = FREE_QUEUE_SIZE;
+        free_queue_handle->item_size = sizeof(void*);
 
         /* Init queue */
         result = cyhal_ipc_queue_init(&init_queue_obj, init_queue_handle);
@@ -985,6 +1039,15 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
             cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cyhal_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
             goto exit9;
         }
+
+        /* Queue used to pass address from secondary core to primary core which is to be freed; free_queue */
+        result = cyhal_ipc_queue_init(&free_queue_obj, free_queue_handle);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cyhal_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
+            goto exit10;
+        }
+
         /* Register callback for write operation in init queue */
         cyhal_ipc_queue_register_callback(&init_queue_obj, init_queue_write_callback, NULL);
         cyhal_ipc_queue_enable_event(&init_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, true);
@@ -999,6 +1062,7 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
         cyhal_ipc_queue_get_handle(&response_queue_obj, channel, RESPONSE_QUEUE_NUM);
         cyhal_ipc_queue_get_handle(&deinit_queue_obj, channel, DEINIT_QUEUE_NUM);
         cyhal_ipc_queue_get_handle(&deinit_rsp_queue_obj, channel, DEINIT_RSP_QUEUE_NUM);
+        cyhal_ipc_queue_get_handle(&free_queue_obj, channel, FREE_QUEUE_NUM);
     }
 
     /* Register callback for write operation in deinit queue */
@@ -1016,6 +1080,10 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
     cyhal_ipc_queue_register_callback(&request_queue_obj, request_queue_write_callback, NULL);
     cyhal_ipc_queue_enable_event(&request_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, true);
 
+    /* Register callback for write operation in free queue */
+    cyhal_ipc_queue_register_callback(&free_queue_obj, free_queue_write_callback, NULL);
+    cyhal_ipc_queue_enable_event(&free_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, true);
+
 #endif
 
     if(hal_resource_opt == CY_VCM_USE_HAL_RESOURCE)
@@ -1030,6 +1098,7 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
             cyhal_ipc_queue_enable_event(&async_cb_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
 #else
             cyhal_ipc_queue_enable_event(&request_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
+            cyhal_ipc_queue_enable_event(&free_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
 #endif
             cyhal_ipc_queue_enable_event(&deinit_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
 
@@ -1043,6 +1112,10 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
 
     return result;
 
+exit10:
+    cyhal_ipc_queue_free(&deinit_rsp_queue_obj);
+    deinit_rsp_queue_pool = NULL;
+    deinit_rsp_queue_handle = NULL;
 exit9:
     cyhal_ipc_queue_free(&deinit_queue_obj);
     deinit_queue_pool = NULL;
@@ -1146,6 +1219,7 @@ cy_rslt_t cy_vcm_deinit()
     cyhal_ipc_queue_enable_event(&async_cb_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
 #else
     cyhal_ipc_queue_enable_event(&request_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
+    cyhal_ipc_queue_enable_event(&free_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
     wcm_internal_func_ptr = NULL;
 #ifdef VCM_ENABLE_MQTT
     mqtt_internal_func_ptr = NULL;
@@ -1184,6 +1258,9 @@ cy_rslt_t cy_vcm_deinit()
         }
 
         /* Free all queues. Set the queue_handles and queue_pool pointers to NULL */
+        cyhal_ipc_queue_free(&free_queue_obj);
+        free_queue_pool = NULL;
+        free_queue_handle = NULL;
         cyhal_ipc_queue_free(&deinit_rsp_queue_obj);
         deinit_rsp_queue_pool = NULL;
         deinit_rsp_queue_handle = NULL;
@@ -1309,6 +1386,38 @@ cy_rslt_t cy_vcm_send_api_request(cy_vcm_request_t* request, cy_vcm_response_t* 
     cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "%s[%d] Virtual Connectivity Manager Send API request ENDS\n", __func__, __LINE__);
 
     return result;
+}
+
+void cy_vcm_free(void* ptr)
+{
+    cy_rslt_t result;
+    uint32_t ptr_val;
+
+    result = cy_rtos_get_mutex(&vcm_request_mutex, CY_VCM_MAX_MUTEX_WAIT_TIME_MS);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cy_rtos_get_mutex failed. res 0x%x\n", __func__, __LINE__, result);
+        return;
+    }
+
+    /* Send IPC message with the address to primary core who has created the memory so that it can be freed */
+    ptr_val = (uint32_t)ptr;
+
+    result = cyhal_ipc_queue_put(&free_queue_obj, &ptr_val, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] Failed to push the API request to the queue. res = 0x%x\n", __func__, __LINE__, result);
+        cy_rtos_set_mutex(&vcm_request_mutex);
+        return;
+    }
+
+    cy_rtos_set_mutex(&vcm_request_mutex);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cy_rtos_set_mutex failed. res = 0x%x\n", __func__, __LINE__, result);
+    }
+
+    return;
 }
 #endif  /* USE_VIRTUAL_API */
 

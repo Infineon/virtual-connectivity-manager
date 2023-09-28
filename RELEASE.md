@@ -6,9 +6,14 @@ See the [README.md](./README.md) for a complete description of the Virtual Conne
 
 ## Changelog
 
+### v1.0.2
+
+- Fixed a crash in secondary core while using IAR.
+
 ### v1.0.1
 
 - Minor bug fixes
+- Documentation updates
 
 ### v1.0.0
 

@@ -1,6 +1,6 @@
 # Virtual Connectivity Manager (VCM)
 
-Virtual-Connectivity-Manager (VCM) is a library that enables connectivity libraries to add multi-core support through virtualization. Virtualization allows the connectivity stack running on one core to be accessed from another core using Inter Process Communication (IPC). With VCM, the connectivity stack can be run on two cores, where one core contains the full connectivity stack (primary core) and the other core contains a subset of virtual-only APIs (secondary core).
+Virtual-Connectivity-Manager (VCM) is a library that enables connectivity libraries to add multi-core support through virtualization. Virtualization allows the connectivity stack running on one core to be accessed from another core using Inter-Processor Communication (IPC). With VCM, the connectivity stack can be run on two cores, where one core contains the full connectivity stack (primary core) and the other core contains a subset of virtual-only APIs (secondary core).
 
 Internally, VCM uses IPC to send API requests from the secondary core to the primary core where the API is executed, and then the result is sent back to the secondary core. This makes it seem like the API was executed on the secondary core itself. VCM simplifies the process of adding multi-core support by hiding the details of IPC from both the connectivity libraries and the end application.
 
@@ -59,9 +59,9 @@ This library is not bundled as part of any other library by default.
 
   | Channel Number | Queue Number |
   | ------- | ---------- |
-  | Any IPC Channel configured by the application for VCM | 1-6 (Reserved by VCM) |
+  | Any IPC Channel configured by the application for VCM | 1-7 (Reserved by VCM) |
 
-  **Note:** The application cannot use queue numbers 1-6 for the configured channel number, as they are reserved for VCM.
+  **Note:** The application cannot use queue numbers 1-7 for the configured channel number, as they are reserved for VCM.
 
 - VCM utilizes one of the IPC queues to send asynchronous event callback data from the primary core to the secondary core. By default, the size of this queue is set to 20.
 
