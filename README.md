@@ -116,4 +116,4 @@ If you are using one of Infineon's BSPs for the connectivity application, you ca
 - [Virtual Connectivity Manager version]( ./version.xml )
 - [Virtual Connectivity Manager API documentation]( https://infineon.github.io/virtual-connectivity-manager/api_reference_manual/html/index.html )
 - [ModusToolbox&trade; software environment, quick start guide, documentation, and videos]( https://www.infineon.com/modustoolbox )
-- [ModusToolbox&trade; any cloud code examples]( https://github.com/Infineon?q=mtb-example-anycloud%20NOT%20Deprecated )
+- [ModusToolbox&trade; code examples]( https://github.com/Infineon/Code-Examples-for-ModusToolbox-Software )
