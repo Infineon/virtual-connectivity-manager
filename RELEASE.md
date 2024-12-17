@@ -6,6 +6,11 @@ See the [README.md](./README.md) for a complete description of the Virtual Conne
 
 ## Changelog
 
+### v1.0.4
+
+-Minor documentation update
+-Added .cyignore
+
 ### v1.0.3
 
 -Minor documentation update
@@ -29,8 +34,8 @@ This version of the library was validated for compatibility with the following s
 
 | Software and tools                                             | Version |
 | :---                                                           | :----:  |
-| ModusToolbox&trade; software environment                       | 3.1     |
-| ModusToolbox&trade; device configurator                        | 4.10    |
+| ModusToolbox&trade; software environment                       | 3.3     |
+| ModusToolbox&trade; device configurator                        | 5.10    |
 | GCC compiler                                                   | 11.3.1  |
-| IAR compiler                                                   | 9.30    |
-| Arm&reg; compiler 6                                            | 6.16    |
+| IAR compiler                                                   | 9.50.2  |
+| Arm&reg; compiler 6                                            | 6.22    |
