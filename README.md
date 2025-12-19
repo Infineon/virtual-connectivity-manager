@@ -25,7 +25,8 @@ The current implementation has the following features and functionality:
 
 This library and its features are supported on the following Infineon platforms:
 
-- [PSoC&trade; 62S2 evaluation kit (CY8CEVAL-062S2-MUR-43439M2)]( https://www.infineon.com/cms/en/product/evaluation-boards/cy8ceval-062s2/ )
+- [PSOC&trade; 62S2 evaluation kit (CY8CEVAL-062S2-MUR-43439M2)]( https://www.infineon.com/cms/en/product/evaluation-boards/cy8ceval-062s2/ )
+- PSOC&trade; Edge E84 Evaluation Kit
 
 ## Dependent libraries
 
@@ -47,15 +48,60 @@ This library is not bundled as part of any other library by default.
    ```
 - Call the `cy_vcm_init()` function provided by the VCM library in both the projects.
 
+   **Note for PSOC&trade; Edge E84:** 
+
+    1. The channel number passed to `cy_vcm_init()` must be different from the channel used in `mtb_ipc_init()`. For example, if `mtb_ipc_init()` uses `MTB_IPC_CHAN_0`, then `cy_vcm_init()` should use `MTB_IPC_CHAN_1`.
+
+    2. IPC object should be passed to VCM during initialization:
+       ```
+       ///////////////////////////////////////////////////////////////////////
+       // Initialization on first core (Example, CM33)
+       ///////////////////////////////////////////////////////////////////////
+
+       #include "cybsp.h"
+       ...
+       ...
+       cy_vcm_config_t vcm_config;
+       vcm_config.ipc_obj = &cybsp_cm33_ipc_instance;             // MTB IPC object created for CM33 which is initialized during BSP initialization.
+       vcm_config.hal_resource_opt = CY_VCM_CREATE_HAL_RESOURCE;  // First core creates resources
+       vcm_config.channel_num = MTB_IPC_CHAN_1;                   // Different from MTB IPC channel
+       vcm_config.event_cb = vcm_event_callback;                  // Event callback function
+       
+       result = cy_vcm_init(&vcm_config);
+       if (result != CY_RSLT_SUCCESS) 
+       {
+           printf("VCM init failed on first core: 0x%lx\n", result);
+       }
+       
+       ///////////////////////////////////////////////////////////////////////
+       // Initialization on second core (Example, CM55)
+       ///////////////////////////////////////////////////////////////////////
+
+       #include "cybsp.h"
+       ...
+       ...
+       cy_vcm_config_t vcm_config2;
+       vcm_config2.ipc_obj = &cybsp_cm55_ipc_instance;         // MTB IPC object created for CM55 which is initialized during BSP initialization.
+       vcm_config2.hal_resource_opt = CY_VCM_USE_HAL_RESOURCE; // Second core uses resources
+       vcm_config2.channel_num = MTB_IPC_CHAN_1;               // Same channel as first core
+       vcm_config2.event_cb = vcm_event_callback;              // Event callback function
+       
+       result2 = cy_vcm_init(&vcm_config2);
+       if (result2 != CY_RSLT_SUCCESS) 
+       {
+           printf("VCM init failed on second core: 0x%lx\n", result2);
+       }
+       ```   
+       
    **Notes:**
 
-    1. To ensure that the VCM initialization is synchronized, the project which boots first (i.e., CM0+ project in case of psoc62) must call `cy_vcm_init` before it brings up the second project (i.e., CM4 project in case of psoc62).
+    1. To ensure that the VCM initialization is synchronized, the project which boots first (i.e., CM0+ project in case of PSOC&trade; 62S2) must call `cy_vcm_init` before it brings up the second project (i.e., CM4 project in case of PSOC&trade; 62S2).
      
     2. The first project must initialize VCM by passing `config.hal_resource_opt` as `CY_VCM_CREATE_HAL_RESOURCE` in `cy_vcm_init`. The second project must pass `config.hal_resource_opt` as `CY_VCM_USE_HAL_RESOURCE`.
 
-    3. VCM initialization can also be done in any order from any core, provided that the first project initializing VCM sets `config.hal_resource_opt` as `CY_VCM_CREATE_HAL_RESOURCE` in `cy_vcm_init` and the second project sets `config.hal_resource_opt` as `CY_VCM_USE_HAL_RESOURCE`. In this case synchronizing VCM initialization between the two cores will be the responsibility of the application. If not synchronised correctly, this can lead to unexpected behavior.
+    3. VCM initialization can also be done in any order from any core, provided that the first project initializing VCM sets `config.hal_resource_opt` as `CY_VCM_CREATE_HAL_RESOURCE` in `cy_vcm_init` and the second project sets `config.hal_resource_opt` as `CY_VCM_USE_HAL_RESOURCE`. In this case synchronizing VCM initialization between the two cores will be the responsibility of the application. If not synchronized correctly, this can lead to unexpected behavior.
 
-- VCM utilizes HAL IPC queue resource to perform inter-core communication. Each HAL IPC queue is associated with a *channel number* and *queue number*.
+- VCM utilizes IPC queue resource to perform inter-core communication. Each IPC queue is associated with a *channel number* and *queue number*.
 
   | Channel Number | Queue Number |
   | ------- | ---------- |
@@ -90,6 +136,8 @@ The VCM library disables all the debug log messages by default. To enable log me
    See [connectivity-utilities library API documentation]( https://Infineon.github.io/connectivity-utilities/api_reference_manual/html/group__logging__utils.html ).
 
 ### Enable logs in dual core application
+
+**Note:** The following instructions are specific to PSOC&trade; 62S2 platforms. For other supported platforms, consult the platform-specific documentation.
 
 To enable debug log messages on both cores, the application needs to reserve two distinct UART ports. 
 

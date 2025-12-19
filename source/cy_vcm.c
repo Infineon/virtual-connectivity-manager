@@ -1,34 +1,31 @@
 /******************************************************************************
- * Copyright 2024, Cypress Semiconductor Corporation (an Infineon company) or
- * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
+ * (c) 2025, Infineon Technologies AG, or an affiliate of Infineon
+ * Technologies AG. All rights reserved.
+ * This software, associated documentation and materials ("Software") is
+ * owned by Infineon Technologies AG or one of its affiliates ("Infineon")
+ * and is protected by and subject to worldwide patent protection, worldwide
+ * copyright laws, and international treaty provisions. Therefore, you may use
+ * this Software only as provided in the license agreement accompanying the
+ * software package from which you obtained this Software. If no license
+ * agreement applies, then any use, reproduction, modification, translation, or
+ * compilation of this Software is prohibited without the express written
+ * permission of Infineon.
  *
- * This software, including source code, documentation and related
- * materials ("Software") is owned by Cypress Semiconductor Corporation
- * or one of its affiliates ("Cypress") and is protected by and subject to
- * worldwide patent protection (United States and foreign),
- * United States copyright laws and international treaty provisions.
- * Therefore, you may use this Software only as provided in the license
- * agreement accompanying the software package from which you
- * obtained this Software ("EULA").
- * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
- * non-transferable license to copy, modify, and compile the Software
- * source code solely for use in connection with Cypress's
- * integrated circuit products.  Any reproduction, modification, translation,
- * compilation, or representation of this Software except as specified
- * above is prohibited without the express written permission of Cypress.
- *
- * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. Cypress
- * reserves the right to make changes to the Software without notice. Cypress
- * does not assume any liability arising out of the application or use of the
- * Software or any product or circuit described in the Software. Cypress does
- * not authorize its products for use in any products where a malfunction or
- * failure of the Cypress product may reasonably be expected to result in
- * significant property damage, injury or death ("High Risk Product"). By
- * including Cypress's product in a High Risk Product, the manufacturer
- * of such system or application assumes all risk of such use and in doing
- * so agrees to indemnify Cypress against all liability.
+ * Disclaimer: UNLESS OTHERWISE EXPRESSLY AGREED WITH INFINEON, THIS SOFTWARE
+ * IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING, BUT NOT LIMITED TO, ALL WARRANTIES OF NON-INFRINGEMENT OF
+ * THIRD-PARTY RIGHTS AND IMPLIED WARRANTIES SUCH AS WARRANTIES OF FITNESS FOR A
+ * SPECIFIC USE/PURPOSE OR MERCHANTABILITY.
+ * Infineon reserves the right to make changes to the Software without notice.
+ * You are responsible for properly designing, programming, and testing the
+ * functionality and safety of your intended application of the Software, as
+ * well as complying with any legal requirements related to its use. Infineon
+ * does not guarantee that the Software will be free from intrusion, data theft
+ * or loss, or other breaches ("Security Breaches"), and Infineon shall have
+ * no liability arising out of any Security Breaches. Unless otherwise
+ * explicitly approved by Infineon, the Software may not be used in any
+ * application where a failure of the Product or any consequences of the use
+ * thereof can reasonably be expected to result in personal injury.
  *
  *******************************************************************************
  * File Name:   cy_vcm.c
@@ -42,7 +39,11 @@
  * Include header files
  ******************************************************************************/
 #include <stdio.h>
+#if defined (COMPONENT_MTB_HAL)
+#include "mtb_ipc.h"
+#else
 #include "cyhal_ipc.h"
+#endif
 #include "cyabs_rtos.h"
 #include "cy_worker_thread.h"
 #include "cy_vcm.h"
@@ -90,19 +91,47 @@
 #define CY_VCM_WORKER_THREAD_STACK_SIZE    (6 * 1024)                        /* VCM worker thread stack size */
 #define CY_VCM_WORKER_THREAD_PRIORITY      (CY_RTOS_PRIORITY_ABOVENORMAL)    /* VCM worker thread priority */
 #define VCM_UNUSED_PARAMETER(x)            ((void)(x))
+
+#if defined(COMPONENT_PSE84)
+#define IPC_PRIORITY                    1U
+#define CM55_WAKEUP_IPC_CH_NUM          10
+#define CM55_WAKEUP_IPC_INTR_NUM        3
+
+#define CM55_WAKEUP_IPC_CH_MASK         CY_IPC_CH_MASK(CM55_WAKEUP_IPC_CH_NUM)
+#define CM55_WAKEUP_IPC_INTR_MASK       CY_IPC_INTR_MASK(CM55_WAKEUP_IPC_INTR_NUM)
+#define CM55_WAKEUP_IPC_INTR_MUX        CY_IPC_INTR_MUX(CM55_WAKEUP_IPC_INTR_NUM)
+
+#define CM55_WAKEUP_IPC_CH_NUM2         11
+#define CM55_WAKEUP_IPC_INTR_NUM2       4
+#define CM55_WAKEUP_IPC_CH_MASK2        CY_IPC_CH_MASK(CM55_WAKEUP_IPC_CH_NUM2)
+#define CM55_WAKEUP_IPC_INTR_MASK2      CY_IPC_INTR_MASK(CM55_WAKEUP_IPC_INTR_NUM2)
+#define CM55_WAKEUP_IPC_INTR_MUX2       CY_IPC_INTR_MUX(CM55_WAKEUP_IPC_INTR_NUM2)
+#endif
 /*******************************************************************************
  * Global variables
  ******************************************************************************/
 #ifndef USE_VIRTUAL_API
 #if (CY_CPU_CORTEX_M0P)
 CY_SECTION_SHAREDMEM
+#elif defined(COMPONENT_PSE84)
+#if (CY_CPU_CORTEX_M55)
+CY_SECTION(".cy_gpu_buf")
+#elif (CY_CPU_CORTEX_M33)
+CY_SECTION(".cy_shared_socmem")
+#endif
 #endif
 static cy_wcm_event_callback_params_t  wcm_event_callback_params[MAX_WCM_DATA_EVENTS]; /* Array which stores the parameters of cy_wcm_event_callback_t function each time the WCM event callback is received from WHD */
 
 #if (CY_CPU_CORTEX_M0P)
 CY_SECTION_SHAREDMEM
+#elif defined(COMPONENT_PSE84)
+#if (CY_CPU_CORTEX_M55)
+CY_SECTION(".cy_gpu_buf")
+#elif (CY_CPU_CORTEX_M33)
+CY_SECTION(".cy_shared_socmem")
 #endif
-static cy_wcm_event_data_t             local_wcm_event_data[MAX_WCM_DATA_EVENTS];      /* Array which stores the event data received from WHD */
+#endif
+static cy_wcm_event_data_t           local_wcm_event_data[MAX_WCM_DATA_EVENTS];      /* Array which stores the event data received from WHD */
 
 static cy_vcm_internal_callback_t    wcm_internal_func_ptr = NULL;     /* Store the WCM event callback function pointer */
 static uint8_t                       wcm_event_index = 0;              /* Next available slot in wcm_event_callback_params to store WCM asynchronous data */
@@ -118,13 +147,21 @@ static cy_mutex_t                    vcm_async_mutex;                  /* Asynch
 #endif
 
 /* Queue objects */
+#if defined(COMPONENT_PSE84)
+mtb_ipc_queue_t async_cb_queue_obj, request_queue_obj, response_queue_obj, deinit_queue_obj, deinit_rsp_queue_obj, init_queue_obj, free_queue_obj;
+#else
 cyhal_ipc_t async_cb_queue_obj, request_queue_obj, response_queue_obj, deinit_queue_obj, deinit_rsp_queue_obj, init_queue_obj, free_queue_obj;
+#endif
 
 /* Queue pool pointers */
-void* async_cb_queue_pool, * request_queue_pool, *response_queue_pool, *deinit_queue_pool, *deinit_rsp_queue_pool, *init_queue_pool, *free_queue_pool;
+void *async_cb_queue_pool, * request_queue_pool, *response_queue_pool, *deinit_queue_pool, *deinit_rsp_queue_pool, *init_queue_pool, *free_queue_pool;
 
 /* Queue handles */
+#if defined(COMPONENT_PSE84)
+mtb_ipc_queue_data_t* async_queue_handle, * request_queue_handle, *response_queue_handle, *deinit_queue_handle, *deinit_rsp_queue_handle, *init_queue_handle, *free_queue_handle;
+#else
 cyhal_ipc_queue_t* async_queue_handle, * request_queue_handle, *response_queue_handle, *deinit_queue_handle, *deinit_rsp_queue_handle, *init_queue_handle, *free_queue_handle;
+#endif
 
 static cy_vcm_hal_resource_opt_t   hal_resource_opt;             /* Should be set to CY_VCM_CREATE_HAL_RESOURCE in the core which initializes VCM first. Value should be set to CY_VCM_USE_HAL_RESOURCE in the core which initializes VCM later */
 static bool                        is_vcm_initialized;           /* Global variable to indicate whether VCM in initialized or not */
@@ -151,6 +188,92 @@ typedef struct
  * Function definitions
  ******************************************************************************/
 
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+void wake_cm55_from_cm33_before_send_ipc(void)
+{
+    Cy_IPC_Drv_SetInterrupt(
+            Cy_IPC_Drv_GetIntrBaseAddr(
+                    CM55_WAKEUP_IPC_INTR_NUM),
+            0, CM55_WAKEUP_IPC_CH_MASK );
+}
+
+void wake_cm55_from_cm33_after_send_ipc(void)
+{
+    Cy_IPC_Drv_SetInterrupt(
+            Cy_IPC_Drv_GetIntrBaseAddr(
+                    CM55_WAKEUP_IPC_INTR_NUM2),
+            0, CM55_WAKEUP_IPC_CH_MASK2 );
+}
+#endif
+
+#ifdef COMPONENT_CM55
+const cy_stc_sysint_t ipcWakeIntConfig =
+{
+    .intrSrc = (IRQn_Type)CY_IPC_INTR_MUX(CM55_WAKEUP_IPC_INTR_NUM),
+    .intrPriority = IPC_PRIORITY,
+};
+
+const cy_stc_sysint_t ipcWakeIntConfig2 =
+{
+    .intrSrc = (IRQn_Type)CY_IPC_INTR_MUX(CM55_WAKEUP_IPC_INTR_NUM2),
+    .intrPriority = IPC_PRIORITY,
+};
+
+static void ipc_wake_isr(void)
+{
+    uint32_t shadowIntr;
+    IPC_INTR_STRUCT_Type *ipcIntrPtr;
+
+    ipcIntrPtr = Cy_IPC_Drv_GetIntrBaseAddr(CM55_WAKEUP_IPC_INTR_NUM);
+    shadowIntr = Cy_IPC_Drv_GetInterruptStatusMasked(ipcIntrPtr);
+
+    /* Check to make sure the interrupt was a notify interrupt */
+    if (0UL != Cy_IPC_Drv_ExtractAcquireMask(shadowIntr))
+    {
+        /* Clear the notify interrupt.  */
+        Cy_IPC_Drv_ClearInterrupt(ipcIntrPtr, CY_IPC_NO_NOTIFICATION, Cy_IPC_Drv_ExtractAcquireMask(shadowIntr));
+    }
+}
+
+static void ipc_wake_isr2(void)
+{
+    uint32_t shadowIntr;
+    IPC_INTR_STRUCT_Type *ipcIntrPtr;
+
+    ipcIntrPtr = Cy_IPC_Drv_GetIntrBaseAddr(CM55_WAKEUP_IPC_INTR_NUM2);
+    shadowIntr = Cy_IPC_Drv_GetInterruptStatusMasked(ipcIntrPtr);
+
+    /* Check to make sure the interrupt was a notify interrupt */
+    if (0UL != Cy_IPC_Drv_ExtractAcquireMask(shadowIntr))
+    {
+        /* Clear the notify interrupt.  */
+        Cy_IPC_Drv_ClearInterrupt(ipcIntrPtr, CY_IPC_NO_NOTIFICATION, Cy_IPC_Drv_ExtractAcquireMask(shadowIntr));
+    }
+}
+
+void setup_ws_cm55(void)
+{
+    Cy_SysInt_Init(&ipcWakeIntConfig, ipc_wake_isr);
+    Cy_SysInt_Init(&ipcWakeIntConfig2, ipc_wake_isr2);
+
+    Cy_IPC_Drv_SetInterruptMask(
+            Cy_IPC_Drv_GetIntrBaseAddr(CM55_WAKEUP_IPC_INTR_NUM),
+            CM55_WAKEUP_IPC_CH_MASK,
+            CM55_WAKEUP_IPC_CH_MASK);
+
+    NVIC_EnableIRQ((IRQn_Type)CY_IPC_INTR_MUX(CM55_WAKEUP_IPC_INTR_NUM));
+    Cy_IPC_Drv_SetInterruptMask(
+        Cy_IPC_Drv_GetIntrBaseAddr(CM55_WAKEUP_IPC_INTR_NUM2),
+        CM55_WAKEUP_IPC_CH_MASK2,
+        CM55_WAKEUP_IPC_CH_MASK2);
+
+    NVIC_EnableIRQ((IRQn_Type)CY_IPC_INTR_MUX(CM55_WAKEUP_IPC_INTR_NUM2));
+}
+#endif
+
+#endif /* COMPONENT_PSE84 */
+
 #ifdef USE_VIRTUAL_API
 
 /* Process asynchronous callback */
@@ -174,12 +297,29 @@ static void process_async_cb(void *arg)
         (void)cy_rtos_set_mutex(&vcm_async_mutex);
         return;
     }
+#if defined(COMPONENT_PSE84)
+    while(mtb_ipc_queue_count(&async_cb_queue_obj))
+    {
+        result = mtb_ipc_queue_get(&async_cb_queue_obj, &async_cb_data, 0);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d]: mtb_ipc_queue_get failed. res = 0x%x\n", __func__, __LINE__, result);
+            continue;
+        }
+        event_cb = (cy_vcm_internal_callback_t)async_cb_data.func_ptr;
 
+        if(event_cb != NULL)
+        {
+            /* Call the application callback with appropriate parameter */
+            event_cb((void*)async_cb_data.data);
+        }
+    }
+#else
     result = cyhal_ipc_queue_get(&async_cb_queue_obj, &async_cb_data, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
     if(result != CY_RSLT_SUCCESS)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d]: cyhal_ipc_queue_get failed. res = 0x%x\n", __func__, __LINE__, result);
-        (void)cy_rtos_set_mutex(&vcm_async_mutex);
+        (void)cy_rtos_set_mutex(&vcm_async_mutex);     
         return;
     }
 
@@ -191,6 +331,7 @@ static void process_async_cb(void *arg)
         event_cb((void*)async_cb_data.data);
     }
 
+#endif
     result = cy_rtos_set_mutex(&vcm_async_mutex);
     if(result != CY_RSLT_SUCCESS)
     {
@@ -200,7 +341,11 @@ static void process_async_cb(void *arg)
 }
 
 /* write event callback for async-callback-queue */
+#if defined(COMPONENT_PSE84)
+void async_queue_write_callback(void *callback_arg, mtb_ipc_queue_event_t event)
+#else
 void async_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
+#endif
 {
     cy_rslt_t result;
     result = cy_worker_thread_enqueue(&cy_vcm_worker_thread, process_async_cb, NULL);
@@ -225,6 +370,28 @@ static void process_virtual_free(void *arg)
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cy_rtos_get_mutex failed. res 0x%x\n", __func__, __LINE__, result);
         return;
     }
+#if defined(COMPONENT_PSE84)
+    while(mtb_ipc_queue_count(&free_queue_obj))
+    {
+        /* Read free queue to get the address to be freed */
+        result = mtb_ipc_queue_get(&free_queue_obj, &ptr_val, 0);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] Failed to get the address to be freed from the queue. res = 0x%x\n", __func__, __LINE__, result);
+            continue;
+        }
+        else
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_get Success. \n", __func__, __LINE__);
+        }
+
+        /* Call free on the address received from the queue */
+        if((void*)ptr_val != NULL)
+        {
+            free((void*)(ptr_val));
+        }
+    }
+#else
     /* Read free queue to get the address to be freed */
     result = cyhal_ipc_queue_get(&free_queue_obj, &ptr_val, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
     if(result != CY_RSLT_SUCCESS)
@@ -236,7 +403,7 @@ static void process_virtual_free(void *arg)
 
     /* Call free on the address received from the queue */
     free((void*)(ptr_val));
-
+#endif
     cy_rtos_set_mutex(&vcm_request_mutex);
     if(result != CY_RSLT_SUCCESS)
     {
@@ -246,7 +413,11 @@ static void process_virtual_free(void *arg)
 }
 
 /* write event callback for free_queue */
+#if defined(COMPONENT_PSE84)
+void free_queue_write_callback(void *callback_arg, mtb_ipc_queue_event_t event)
+#else
 void free_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
+#endif
 {
     cy_rslt_t result;
     result = cy_worker_thread_enqueue(&cy_vcm_worker_thread, process_virtual_free, NULL);
@@ -284,16 +455,39 @@ void local_wcm_event_cb(cy_wcm_event_t event, cy_wcm_event_data_t *event_data)
         return;
     }
 
-    memcpy((void*)(&(local_wcm_event_data[wcm_event_index])), (void*)event_data, sizeof(cy_wcm_event_data_t));
-    wcm_event_callback_params[wcm_event_index].event_data = &(local_wcm_event_data[wcm_event_index]);
+    if(event_data != NULL)
+    {
+        memset(&(local_wcm_event_data[wcm_event_index]), 0, sizeof(cy_wcm_event_data_t));
+        memcpy((void*)(&(local_wcm_event_data[wcm_event_index])), (void*)event_data, sizeof(cy_wcm_event_data_t));
+        wcm_event_callback_params[wcm_event_index].event_data = &(local_wcm_event_data[wcm_event_index]);
+    }
+    else
+    {
+        wcm_event_callback_params[wcm_event_index].event_data = NULL;
+    }
     wcm_event_callback_params[wcm_event_index].event = event;
     vcm_async_callback_data.data = (void *)(&(wcm_event_callback_params[wcm_event_index]));
     vcm_async_callback_data.func_ptr = (void *)wcm_internal_func_ptr;
+
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_before_send_ipc();
+#endif
+    result = mtb_ipc_queue_put(&async_cb_queue_obj, &vcm_async_callback_data, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else
     result = cyhal_ipc_queue_put(&async_cb_queue_obj, &vcm_async_callback_data, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif
     if(result != CY_RSLT_SUCCESS)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] Failed to push WCM event to the asynchronous callback queue. res = 0x%x\n", __func__, __LINE__, result);
     }
+
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+#endif
+
     if(wcm_event_index < (MAX_WCM_DATA_EVENTS - 1))
     {
         wcm_event_index++;
@@ -318,12 +512,22 @@ void local_mqtt_event_cb(cy_mqtt_t mqtt_handle, cy_mqtt_event_t event, void *use
 {
 #if (CY_CPU_CORTEX_M0P)
     CY_SECTION_SHAREDMEM
+#elif defined(COMPONENT_PSE84)
+#if (CY_CPU_CORTEX_M55)
+CY_SECTION(".cy_gpu_buf")
+#elif (CY_CPU_CORTEX_M33)
+CY_SECTION(".cy_shared_socmem")
+#endif
 #endif
     static cy_mqtt_callback_params_t mqtt_callback_params;
     cy_vcm_cb_data                   vcm_async_callback_data;
     cy_rslt_t                        result;
     const char                       *payload;
     const char                       *topic;
+#if defined(COMPONENT_PSE84)
+    const char                       *payload_base_ptr, *topic_base_ptr;
+    uint32_t                          aligned_size, alloc_size;
+#endif
 
     result = cy_rtos_get_mutex(&vcm_mqtt_mutex, CY_VCM_MAX_MUTEX_WAIT_TIME_MS);
     if(result != CY_RSLT_SUCCESS)
@@ -346,12 +550,55 @@ void local_mqtt_event_cb(cy_mqtt_t mqtt_handle, cy_mqtt_event_t event, void *use
         return;
     }
 
+    memset(&mqtt_callback_params, 0x00, sizeof(cy_mqtt_callback_params_t));
     mqtt_callback_params.mqtt_handle = mqtt_handle;
 
     mqtt_callback_params.event = event;
     /* Store the topic and payload into a local memory before passing to the secondary core.
      * This memory will be freed in virtual_event_handler in MQTT library
      */
+#if defined(COMPONENT_PSE84)
+    /* Determine the minimum 32 byte aligned memory size that is needed to fit the payload_len */
+    aligned_size = event.data.pub_msg.received_message.payload_len + (CY_VCM_MEMORY_BYTE_ALIGNMENT - (event.data.pub_msg.received_message.payload_len % CY_VCM_MEMORY_BYTE_ALIGNMENT));
+    /* Add additional 32 bytes to facilitate moving of the start of payload pointer to a location which is 32 byte aligned */
+    alloc_size = aligned_size + CY_VCM_MEMORY_BYTE_ALIGNMENT;
+    payload_base_ptr = (char*)malloc(alloc_size);
+    if( payload_base_ptr == NULL )
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] malloc failed. No memory.\n", __func__, __LINE__);
+        cy_rtos_set_mutex(&vcm_mqtt_mutex);
+        return;
+    }
+    memset((void*)payload_base_ptr, 0, alloc_size);
+    /* Moving the payload pointer to a memory location which is 32 byte aligned */
+    payload = (char*)((uint32_t)payload_base_ptr + ( CY_VCM_MEMORY_BYTE_ALIGNMENT - ((uint32_t)payload_base_ptr % CY_VCM_MEMORY_BYTE_ALIGNMENT)));
+    memcpy((void*)payload, (void*)(event.data.pub_msg.received_message.payload), event.data.pub_msg.received_message.payload_len);
+#if (CY_CPU_CORTEX_M55)
+    /* Clean the D-cache so that data is written to the actual memory location */
+    SCB_CleanDCache_by_Addr((void*)payload, aligned_size);
+#endif
+
+    /* Determine the minimum 32 byte aligned memory size that is needed to fit the topic_len */
+    aligned_size = event.data.pub_msg.received_message.topic_len + (CY_VCM_MEMORY_BYTE_ALIGNMENT - (event.data.pub_msg.received_message.topic_len % CY_VCM_MEMORY_BYTE_ALIGNMENT));
+    /* Add additional 32 bytes to facilitate moving of the start of topic pointer to a location which is 32 byte aligned */
+    alloc_size = aligned_size + CY_VCM_MEMORY_BYTE_ALIGNMENT;
+    topic_base_ptr = (char*)malloc( alloc_size );
+    if( topic_base_ptr == NULL )
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] malloc failed. No memory.\n", __func__, __LINE__);
+        free((char*)payload_base_ptr);
+        cy_rtos_set_mutex(&vcm_mqtt_mutex);
+        return;
+    }
+    memset((void*)topic_base_ptr, 0, alloc_size);
+    /* Moving the topic pointer to a memory location which is 32 byte aligned */
+    topic = (char*)((uint32_t)topic_base_ptr + ( CY_VCM_MEMORY_BYTE_ALIGNMENT - ((uint32_t)topic_base_ptr % CY_VCM_MEMORY_BYTE_ALIGNMENT)));
+    memcpy((void*)topic, (void*)(event.data.pub_msg.received_message.topic), event.data.pub_msg.received_message.topic_len);
+#if (CY_CPU_CORTEX_M55)
+    /* Clean the D-cache so that data is written to the actual memory location */
+    SCB_CleanDCache_by_Addr((void*)topic, aligned_size);
+#endif
+#else /* !COMPONENT_PSE84*/
     payload = (char *) malloc( event.data.pub_msg.received_message.payload_len );
     if( payload == NULL )
     {
@@ -369,19 +616,40 @@ void local_mqtt_event_cb(cy_mqtt_t mqtt_handle, cy_mqtt_event_t event, void *use
     }
     memcpy((void*)payload, (void*)(event.data.pub_msg.received_message.payload), event.data.pub_msg.received_message.payload_len);
     memcpy((void*)topic, (void*)(event.data.pub_msg.received_message.topic), event.data.pub_msg.received_message.topic_len);
+#endif /*COMPONENT_PSE84*/
+
     mqtt_callback_params.event.data.pub_msg.received_message.payload = payload;
     mqtt_callback_params.event.data.pub_msg.received_message.topic = topic;
+#if defined(COMPONENT_PSE84)
+    mqtt_callback_params.payload_base_ptr = (void*)payload_base_ptr;
+    mqtt_callback_params.topic_base_ptr = (void*)topic_base_ptr;
+#endif
 
     mqtt_callback_params.user_data = user_data;
     vcm_async_callback_data.data = (void *)(&(mqtt_callback_params));
     vcm_async_callback_data.func_ptr = (void *)mqtt_internal_func_ptr;
+
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_before_send_ipc();
+#endif
+    result = mtb_ipc_queue_put(&async_cb_queue_obj, &vcm_async_callback_data, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else /* !COMPONENT_PSE84*/
     result = cyhal_ipc_queue_put(&async_cb_queue_obj, &vcm_async_callback_data, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif /* COMPONENT_PSE84*/
+
     if(result != CY_RSLT_SUCCESS)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] Failed to push MQTT event to the asynchronous callback queue. res = 0x%x\n", __func__, __LINE__, result);
         cy_rtos_set_mutex(&vcm_mqtt_mutex);
         goto exit;
     }
+
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+#endif
 
     result = cy_rtos_set_mutex(&vcm_mqtt_mutex);
     if(result != CY_RSLT_SUCCESS)
@@ -394,6 +662,10 @@ void local_mqtt_event_cb(cy_mqtt_t mqtt_handle, cy_mqtt_event_t event, void *use
 exit:
     free((char*)payload);
     free((char*)topic);
+#if defined(COMPONENT_PSE84)
+    free((char*)payload_base_ptr);
+    free((char*)topic_base_ptr);
+#endif
     return;
 }
 #endif /* VCM_ENABLE_MQTT */
@@ -405,8 +677,14 @@ static void process_api_request(void *arg)
     cy_vcm_response_t  response;
 #if (CY_CPU_CORTEX_M0P)
     CY_SECTION_SHAREDMEM
+#elif defined(COMPONENT_PSE84)
+#if (CY_CPU_CORTEX_M55)
+CY_SECTION(".cy_gpu_buf")
+#elif (CY_CPU_CORTEX_M33)
+CY_SECTION(".cy_shared_socmem")
 #endif
-    static cy_rslt_t   api_result;
+#endif
+    static cy_rslt_t   api_result = CY_RSLT_SUCCESS;
     cy_rslt_t result;
 
     cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "%s[%d] Request processing STARTS on primary application\n", __func__, __LINE__);
@@ -418,11 +696,18 @@ static void process_api_request(void *arg)
         return;
     }
 
-    /* Read the API request from request_queue */
+    memset(&request, 0, sizeof(cy_vcm_request_t));
+    /* Read the API request from request_queue
+     * mtb_ipc_queue_get will also perform the cache operation whenever D-cache is available.
+     * Hence request will contain the latest data and not stale data. */
+#if defined(COMPONENT_PSE84)
+    result = mtb_ipc_queue_get(&request_queue_obj, &request, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else
     result = cyhal_ipc_queue_get(&request_queue_obj, &request, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif
     if(result != CY_RSLT_SUCCESS)
     {
-        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cyhal_ipc_queue_get failed. res = 0x%x\n", __func__, __LINE__, result);
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] IPC get queue failed. res = 0x%x\n", __func__, __LINE__, result);
         (void)cy_rtos_set_mutex(&vcm_request_mutex);
         return;
     }
@@ -436,6 +721,12 @@ static void process_api_request(void *arg)
         {
 #if (CY_CPU_CORTEX_M0P)
             CY_SECTION_SHAREDMEM
+#elif defined(COMPONENT_PSE84)
+#if (CY_CPU_CORTEX_M55)
+CY_SECTION(".cy_gpu_buf")
+#elif (CY_CPU_CORTEX_M33)
+CY_SECTION(".cy_shared_socmem")
+#endif
 #endif
             static uint8_t connect_status = 0;
             connect_status = cy_wcm_is_connected_to_ap();
@@ -444,7 +735,7 @@ static void process_api_request(void *arg)
         }
         case CY_VCM_API_WCM_REG_EVENT_CB:
         {
-            cy_wcm_register_event_callback_params_t *params;
+            cy_wcm_register_event_callback_params_t *params = NULL;
 
             result = cy_rtos_get_mutex(&vcm_wcm_mutex, CY_VCM_MAX_MUTEX_WAIT_TIME_MS);
             if(result != CY_RSLT_SUCCESS)
@@ -478,7 +769,7 @@ static void process_api_request(void *arg)
         }
         case CY_VCM_API_WCM_DEREG_EVENT_CB:
         {
-            cy_wcm_deregister_event_callback_params_t *params;
+            cy_wcm_deregister_event_callback_params_t *params = NULL;
 
             result = cy_rtos_get_mutex(&vcm_wcm_mutex, CY_VCM_MAX_MUTEX_WAIT_TIME_MS);
             if(result != CY_RSLT_SUCCESS)
@@ -519,6 +810,9 @@ static void process_api_request(void *arg)
                 response.result = &api_result;
                 break;
             }
+#if defined(COMPONENT_CM55) && defined (__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
+            SCB_InvalidateDCache_by_Addr((void *) params->sub_info->topic, params->sub_info->topic_len);
+#endif
             api_result = cy_mqtt_subscribe(params->mqtt_handle, params->sub_info, params->sub_count);
             if(api_result != CY_RSLT_SUCCESS)
             {
@@ -536,6 +830,9 @@ static void process_api_request(void *arg)
                 response.result = &api_result;
                 break;
             }
+#if defined(COMPONENT_CM55) && defined (__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
+            SCB_InvalidateDCache_by_Addr((void *) params->unsub_info->topic, params->unsub_info->topic_len);
+#endif
             api_result = cy_mqtt_unsubscribe(params->mqtt_handle, params->unsub_info, params->unsub_count);
             if(api_result != CY_RSLT_SUCCESS)
             {
@@ -553,6 +850,11 @@ static void process_api_request(void *arg)
                 response.result = &api_result;
                 break;
             }
+
+#if defined(COMPONENT_CM55) && defined (__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
+            SCB_InvalidateDCache_by_Addr((void *) params->pub_msg->topic, params->pub_msg->topic_len);
+            SCB_InvalidateDCache_by_Addr((void *) params->pub_msg->payload, params->pub_msg->payload_len);
+#endif
             api_result = cy_mqtt_publish(params->mqtt_handle, params->pub_msg);
             if(api_result != CY_RSLT_SUCCESS)
             {
@@ -651,13 +953,28 @@ static void process_api_request(void *arg)
         }
     }
 
-    /* Push the result of API call to response_queue */
+    /* Push the result of API call to response_queue
+     * response.result always points to a shared memory.
+     * Hence whenever D-cache is available on a core, cache operation is not require before sending it over IPC */
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_before_send_ipc();
+#endif
+    result = mtb_ipc_queue_put(&response_queue_obj, &response, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_put failed. res = 0x%x\n", __func__, __LINE__, result);
+    }
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+#else /*!COMPONENT_PSE84*/
     result = cyhal_ipc_queue_put(&response_queue_obj, &response, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
     if(result != CY_RSLT_SUCCESS)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cyhal_ipc_queue_put failed. res = 0x%x\n", __func__, __LINE__, result);
     }
-
+#endif /*COMPONENT_PSE84*/
     result = cy_rtos_set_mutex(&vcm_request_mutex);
     if(result != CY_RSLT_SUCCESS)
     {
@@ -668,7 +985,11 @@ static void process_api_request(void *arg)
 }
 
 /* write event callback for request_queue */
+#if defined(COMPONENT_PSE84)
+void request_queue_write_callback(void *callback_arg, mtb_ipc_queue_event_t event)
+#else
 void request_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
+#endif
 {
     cy_rslt_t result;
     result = cy_worker_thread_enqueue(&cy_vcm_worker_thread, process_api_request, NULL);
@@ -704,7 +1025,11 @@ static void init_queue_processing(void *arg)
     }
 
     /* Wait for queue element to be posted by secondary core once the VCM is inited on secondary core */
+#if defined(COMPONENT_PSE84)
+    result = mtb_ipc_queue_get(&init_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else
     result = cyhal_ipc_queue_get(&init_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif
     if(result == CY_RSLT_SUCCESS)
     {
         if(vcm_event != CY_VCM_EVENT_INIT_COMPLETE)
@@ -724,15 +1049,22 @@ static void init_queue_processing(void *arg)
     }
     else
     {
-        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cyhal_ipc_queue_get failed. res: 0x%x\n", __func__, __LINE__, result);
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] IPC queue get failed. res: 0x%x\n", __func__, __LINE__, result);
         (void)cy_rtos_set_mutex(&init_complete_mutex);
         return;
     }
-
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_enable_event(&init_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+#else
     cyhal_ipc_queue_enable_event(&init_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
-
+#endif
     /* Delete the init_queue */
+#if defined(COMPONENT_PSE84)
+    cy_rtos_delay_milliseconds(50);
+    mtb_ipc_queue_free(&init_queue_obj);
+#else
     cyhal_ipc_queue_free(&init_queue_obj);
+#endif
     init_queue_pool = NULL;
     init_queue_handle = NULL;
 
@@ -748,7 +1080,11 @@ static void init_queue_processing(void *arg)
 }
 
 /* write event callback for init queue */
+#if defined(COMPONENT_PSE84)
+void init_queue_write_callback(void *callback_arg, mtb_ipc_queue_event_t event)
+#else
 void init_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
+#endif
 {
     cy_rslt_t result;
     result = cy_worker_thread_enqueue(&cy_vcm_worker_thread, init_queue_processing, NULL);
@@ -797,10 +1133,14 @@ static void deinit_queue_processing(void *arg)
     }
 #endif
 
+#if defined(COMPONENT_PSE84)
+    result = mtb_ipc_queue_get(&deinit_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else
     result = cyhal_ipc_queue_get(&deinit_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif
     if(result != CY_RSLT_SUCCESS)
     {
-        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cyhal_ipc_queue_get failed. res = 0x%x\n", __func__, __LINE__, result);
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] IPC queue get failed. res = 0x%x\n", __func__, __LINE__, result);
         goto exit;
     }
 
@@ -818,12 +1158,25 @@ static void deinit_queue_processing(void *arg)
 
     /* Acknowledge the de-init notification and send message to the core which is trying to de-initialize */
     vcm_event = CY_VCM_EVENT_DEINIT;
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_before_send_ipc();
+#endif
+    result = mtb_ipc_queue_put(&deinit_rsp_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+    if(result != CY_RSLT_SUCCESS)
+    {
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_put failed. res = 0x%x\n", __func__, __LINE__, result);
+    }
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+#else /*!COMPONENT_PSE84*/
     result = cyhal_ipc_queue_put(&deinit_rsp_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
     if(result != CY_RSLT_SUCCESS)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] cyhal_ipc_queue_put failed. res = 0x%x\n", __func__, __LINE__, result);
     }
-
+#endif
 exit:
 #ifndef USE_VIRTUAL_API
     (void)cy_rtos_set_mutex(&vcm_wcm_mutex);
@@ -839,7 +1192,11 @@ exit:
 }
 
 /* write event callback for deinit queue */
+#if defined(COMPONENT_PSE84)
+void deinit_queue_write_callback(void *callback_arg, mtb_ipc_queue_event_t event)
+#else
 void deinit_queue_write_callback(void *callback_arg, cyhal_ipc_event_t event)
+#endif
 {
     cy_rslt_t result;
     result = cy_worker_thread_enqueue(&cy_vcm_worker_thread, deinit_queue_processing, NULL);
@@ -854,6 +1211,9 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
 {
     cy_rslt_t                 result = CY_RSLT_SUCCESS;
     uint32_t                  channel;
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_t                 *ipc_obj;
+#endif
     cy_vcm_event_t            vcm_event;
     cy_worker_thread_params_t worker_thread_params;
 
@@ -881,6 +1241,9 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
     hal_resource_opt = config->hal_resource_opt;
     channel          = config->channel_num;
     event_cb         = config->event_cb;
+#if defined(COMPONENT_PSE84)
+    ipc_obj          = config->ipc_obj;
+#endif
 
     /* Creating the VCM worker thread */
     memset(&worker_thread_params, 0, sizeof(worker_thread_params));
@@ -937,6 +1300,131 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
     /* Initialize the queue resources only in the core which initializes the Virtual connectivity manager first */
     if(hal_resource_opt == CY_VCM_CREATE_HAL_RESOURCE)
     {
+#if defined(COMPONENT_PSE84)
+
+        MTB_IPC_QUEUE_POOL_ALLOC(async_cb_queue_pool, ASYNC_CB_QUEUE_SIZE, sizeof(cy_vcm_cb_data));
+        MTB_IPC_QUEUE_POOL_ALLOC(request_queue_pool, REQUEST_QUEUE_SIZE, sizeof(cy_vcm_request_t));
+        MTB_IPC_QUEUE_POOL_ALLOC(response_queue_pool, RESPONSE_QUEUE_SIZE, sizeof(cy_vcm_response_t));
+        MTB_IPC_QUEUE_POOL_ALLOC(deinit_queue_pool, DEINIT_QUEUE_SIZE, sizeof(cy_vcm_event_t));
+        MTB_IPC_QUEUE_POOL_ALLOC(deinit_rsp_queue_pool, DEINIT_RSP_QUEUE_SIZE, sizeof(cy_vcm_event_t));
+        MTB_IPC_QUEUE_POOL_ALLOC(init_queue_pool, INIT_QUEUE_SIZE, sizeof(cy_vcm_event_t));
+        MTB_IPC_QUEUE_POOL_ALLOC(free_queue_pool, FREE_QUEUE_SIZE, sizeof(void*));
+
+        /* Defining and allocating (shared) memory for queue handles */
+        MTB_IPC_QUEUE_DATA_ALLOC(async_queue_handle);
+        MTB_IPC_QUEUE_DATA_ALLOC(request_queue_handle);
+        MTB_IPC_QUEUE_DATA_ALLOC(response_queue_handle);
+        MTB_IPC_QUEUE_DATA_ALLOC(deinit_queue_handle);
+        MTB_IPC_QUEUE_DATA_ALLOC(deinit_rsp_queue_handle);
+        MTB_IPC_QUEUE_DATA_ALLOC(init_queue_handle);
+        MTB_IPC_QUEUE_DATA_ALLOC(free_queue_handle);
+
+        /* Associating the queue handles with appropriate queue details */
+        mtb_ipc_queue_config_t async_queue_config, request_queue_config, response_queue_config, deinit_queue_config, deinit_rsp_queue_config, init_queue_config, free_queue_config;
+        async_queue_config.channel_num = (mtb_ipc_channel_t)channel;
+        async_queue_config.queue_num   = ASYNC_CB_QUEUE_NUM;
+        async_queue_config.queue_pool  = async_cb_queue_pool;
+        async_queue_config.max_num_items   = ASYNC_CB_QUEUE_SIZE;
+        async_queue_config.item_size   = sizeof(cy_vcm_cb_data);
+        async_queue_config.semaphore_num = 9UL;
+
+        request_queue_config.channel_num = (mtb_ipc_channel_t)channel;
+        request_queue_config.queue_num   = REQUEST_QUEUE_NUM;
+        request_queue_config.queue_pool  = request_queue_pool;
+        request_queue_config.max_num_items   = REQUEST_QUEUE_SIZE;
+        request_queue_config.item_size   = sizeof(cy_vcm_request_t);
+        request_queue_config.semaphore_num = 10UL;
+
+        response_queue_config.channel_num = (mtb_ipc_channel_t)channel;
+        response_queue_config.queue_num   = RESPONSE_QUEUE_NUM;
+        response_queue_config.queue_pool  = response_queue_pool;
+        response_queue_config.max_num_items   = RESPONSE_QUEUE_SIZE;
+        response_queue_config.item_size   = sizeof(cy_vcm_response_t);
+        response_queue_config.semaphore_num = 11UL;
+
+        deinit_queue_config.channel_num = (mtb_ipc_channel_t)channel;
+        deinit_queue_config.queue_num = DEINIT_QUEUE_NUM;
+        deinit_queue_config.queue_pool = deinit_queue_pool;
+        deinit_queue_config.max_num_items = DEINIT_QUEUE_SIZE;
+        deinit_queue_config.item_size = sizeof(cy_vcm_event_t);
+        deinit_queue_config.semaphore_num = 12UL;
+
+        deinit_rsp_queue_config.channel_num = (mtb_ipc_channel_t)channel;
+        deinit_rsp_queue_config.queue_num = DEINIT_RSP_QUEUE_NUM;
+        deinit_rsp_queue_config.queue_pool = deinit_rsp_queue_pool;
+        deinit_rsp_queue_config.max_num_items = DEINIT_RSP_QUEUE_SIZE;
+        deinit_rsp_queue_config.item_size = sizeof(cy_vcm_event_t);
+        deinit_rsp_queue_config.semaphore_num = 13UL;
+
+        init_queue_config.channel_num = (mtb_ipc_channel_t)channel;
+        init_queue_config.queue_num = INIT_QUEUE_NUM;
+        init_queue_config.queue_pool = init_queue_pool;
+        init_queue_config.max_num_items = INIT_QUEUE_SIZE;
+        init_queue_config.item_size = sizeof(cy_vcm_event_t);
+        init_queue_config.semaphore_num = 14UL;
+
+        free_queue_config.channel_num = (mtb_ipc_channel_t)channel;
+        free_queue_config.queue_num = FREE_QUEUE_NUM;
+        free_queue_config.queue_pool = free_queue_pool;
+        free_queue_config.max_num_items = FREE_QUEUE_SIZE;
+        free_queue_config.item_size = sizeof(void*);
+        free_queue_config.semaphore_num = 15UL;
+
+        /* Init queue */
+        result = mtb_ipc_queue_init(ipc_obj, &init_queue_obj, init_queue_handle, &init_queue_config);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
+            goto exit4;
+        }
+        /* Request queue */
+        result = mtb_ipc_queue_init(ipc_obj, &request_queue_obj, request_queue_handle, &request_queue_config);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
+            goto exit5;
+        }
+        /* Response queue */
+        result = mtb_ipc_queue_init(ipc_obj, &response_queue_obj, response_queue_handle, &response_queue_config);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
+            goto exit6;
+        }
+        /* Asynchronous callback queue */
+        result = mtb_ipc_queue_init(ipc_obj, &async_cb_queue_obj, async_queue_handle, &async_queue_config);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
+            goto exit7;
+        }
+        /* Deinit queue */
+        result = mtb_ipc_queue_init(ipc_obj, &deinit_queue_obj, deinit_queue_handle, &deinit_queue_config);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
+            goto exit8;
+        }
+        /* De-init response queue */
+        result = mtb_ipc_queue_init(ipc_obj, &deinit_rsp_queue_obj, deinit_rsp_queue_handle, &deinit_rsp_queue_config);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
+            goto exit9;
+        }
+
+        /* Queue used to pass address from secondary core to primary core which is to be freed; free_queue */
+        result = mtb_ipc_queue_init(ipc_obj, &free_queue_obj, free_queue_handle, &free_queue_config);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_init failed for queue. res = 0x%x\n", __func__, __LINE__, result);
+            goto exit10;
+        }
+
+        /* Register callback for write operation in init queue */
+        mtb_ipc_queue_register_callback(&init_queue_obj, init_queue_write_callback, NULL);
+        mtb_ipc_queue_enable_event(&init_queue_obj, MTB_IPC_QUEUE_WRITE, true);
+#else /*COMPONENT_PSE84*/
         CYHAL_IPC_QUEUE_POOL_ALLOC(async_cb_queue_pool, ASYNC_CB_QUEUE_SIZE, sizeof(cy_vcm_cb_data));
         CYHAL_IPC_QUEUE_POOL_ALLOC(request_queue_pool, REQUEST_QUEUE_SIZE, sizeof(cy_vcm_request_t));
         CYHAL_IPC_QUEUE_POOL_ALLOC(response_queue_pool, RESPONSE_QUEUE_SIZE, sizeof(cy_vcm_response_t));
@@ -1051,9 +1539,22 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
         /* Register callback for write operation in init queue */
         cyhal_ipc_queue_register_callback(&init_queue_obj, init_queue_write_callback, NULL);
         cyhal_ipc_queue_enable_event(&init_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, true);
+#endif /*COMPONENT_PSE84*/
     }
     else /* hal_resource_opt is CY_VCM_USE_HAL_RESOURCE */
     {
+#if defined(COMPONENT_PSE84)
+
+        /* Get handles of all the queues */
+        cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "%s[%d] VCM initialization STARTS in the second core\n", __func__, __LINE__);
+        mtb_ipc_queue_get_handle(ipc_obj, &init_queue_obj, channel, INIT_QUEUE_NUM);
+        mtb_ipc_queue_get_handle(ipc_obj, &async_cb_queue_obj, channel, ASYNC_CB_QUEUE_NUM);
+        mtb_ipc_queue_get_handle(ipc_obj, &request_queue_obj, channel, REQUEST_QUEUE_NUM);
+        mtb_ipc_queue_get_handle(ipc_obj, &response_queue_obj, channel, RESPONSE_QUEUE_NUM);
+        mtb_ipc_queue_get_handle(ipc_obj, &deinit_queue_obj, channel, DEINIT_QUEUE_NUM);
+        mtb_ipc_queue_get_handle(ipc_obj, &deinit_rsp_queue_obj, channel, DEINIT_RSP_QUEUE_NUM);
+        mtb_ipc_queue_get_handle(ipc_obj, &free_queue_obj, channel, FREE_QUEUE_NUM);
+#else /* !COMPONENT_PSE84*/
         /* Get handles of all the queues */
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "%s[%d] VCM initialization STARTS in the second core\n", __func__, __LINE__);
         cyhal_ipc_queue_get_handle(&init_queue_obj, channel, INIT_QUEUE_NUM);
@@ -1063,8 +1564,28 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
         cyhal_ipc_queue_get_handle(&deinit_queue_obj, channel, DEINIT_QUEUE_NUM);
         cyhal_ipc_queue_get_handle(&deinit_rsp_queue_obj, channel, DEINIT_RSP_QUEUE_NUM);
         cyhal_ipc_queue_get_handle(&free_queue_obj, channel, FREE_QUEUE_NUM);
+#endif /* COMPONENT_PSE84*/
     }
 
+#if defined(COMPONENT_PSE84)
+    /* Register callback for write operation in deinit queue */
+    mtb_ipc_queue_register_callback(&deinit_queue_obj, deinit_queue_write_callback, NULL);
+    mtb_ipc_queue_enable_event(&deinit_queue_obj, MTB_IPC_QUEUE_WRITE, true);
+
+#ifdef USE_VIRTUAL_API
+    /* Register callback for write operation in async callback handling queue */
+    mtb_ipc_queue_register_callback(&async_cb_queue_obj, async_queue_write_callback, NULL);
+    mtb_ipc_queue_enable_event(&async_cb_queue_obj, MTB_IPC_QUEUE_WRITE, true);
+#else /* !USE_VIRTUAL_API */
+    /* Register callback for write operation in request handling queue */
+    mtb_ipc_queue_register_callback(&request_queue_obj, request_queue_write_callback, NULL);
+    mtb_ipc_queue_enable_event(&request_queue_obj, MTB_IPC_QUEUE_WRITE, true);
+
+    /* Register callback for write operation in free queue */
+    mtb_ipc_queue_register_callback(&free_queue_obj, free_queue_write_callback, NULL);
+    mtb_ipc_queue_enable_event(&free_queue_obj, MTB_IPC_QUEUE_WRITE, true);
+#endif /* USE_VIRTUAL_API */
+#else /* !COMPONENT_PSE84*/
     /* Register callback for write operation in deinit queue */
     cyhal_ipc_queue_register_callback(&deinit_queue_obj, deinit_queue_write_callback, NULL);
     cyhal_ipc_queue_enable_event(&deinit_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, true);
@@ -1085,11 +1606,33 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
     cyhal_ipc_queue_enable_event(&free_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, true);
 
 #endif
-
+#endif /*COMPONENT_PSE84*/
     if(hal_resource_opt == CY_VCM_USE_HAL_RESOURCE)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "%s[%d] Initialization complete in second core. Informing the main core\n", __func__, __LINE__);
         vcm_event = CY_VCM_EVENT_INIT_COMPLETE;
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_before_send_ipc();
+#endif
+        result = mtb_ipc_queue_put(&init_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+        if(result != CY_RSLT_SUCCESS)
+        {
+            cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] mtb_ipc_queue_put failed. Failed to intimate the main core. res = 0x%x\n", __func__, __LINE__, result);
+#ifdef USE_VIRTUAL_API
+            mtb_ipc_queue_enable_event(&async_cb_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+#else
+            mtb_ipc_queue_enable_event(&request_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+            mtb_ipc_queue_enable_event(&free_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+#endif
+            mtb_ipc_queue_enable_event(&deinit_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+
+            goto exit4;
+        }
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+#else /* !COMPONENT_PSE84*/
         result = cyhal_ipc_queue_put(&init_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
         if(result != CY_RSLT_SUCCESS)
         {
@@ -1104,36 +1647,66 @@ cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)
 
             goto exit4;
         }
+#endif /*COMPONENT_PSE84*/
         is_dual_core_vcm_initialized = true;
     }
     is_vcm_initialized = true;
 
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM55
+    setup_ws_cm55();
+#endif
+#endif
     cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "%s[%d] Virtual Connectivity Manager initialization ENDS - successfully Initialized\n", __func__, __LINE__);
 
     return result;
 
 exit10:
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_free(&deinit_rsp_queue_obj);
+#else
     cyhal_ipc_queue_free(&deinit_rsp_queue_obj);
+#endif
     deinit_rsp_queue_pool = NULL;
     deinit_rsp_queue_handle = NULL;
 exit9:
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_free(&deinit_queue_obj);
+#else
     cyhal_ipc_queue_free(&deinit_queue_obj);
+#endif
     deinit_queue_pool = NULL;
     deinit_queue_handle = NULL;
 exit8:
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_free(&async_cb_queue_obj);
+#else
     cyhal_ipc_queue_free(&async_cb_queue_obj);
+#endif
     async_cb_queue_pool = NULL;
     async_queue_handle = NULL;
 exit7:
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_free(&response_queue_obj);
+#else
     cyhal_ipc_queue_free(&response_queue_obj);
+#endif
     response_queue_pool = NULL;
     response_queue_handle = NULL;
 exit6:
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_free(&request_queue_obj);
+#else
     cyhal_ipc_queue_free(&request_queue_obj);
+#endif
     request_queue_pool = NULL;
     request_queue_handle = NULL;
 exit5:
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_free(&init_queue_obj);
+#else
     cyhal_ipc_queue_free(&init_queue_obj);
+#endif
     init_queue_pool = NULL;
     init_queue_handle = NULL;
 
@@ -1216,10 +1789,19 @@ cy_rslt_t cy_vcm_deinit()
 #endif
 
 #ifdef USE_VIRTUAL_API
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_enable_event(&async_cb_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+#else /*!COMPONENT_PSE84*/
     cyhal_ipc_queue_enable_event(&async_cb_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
+#endif /*COMPONENT_PSE84*/
 #else
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_enable_event(&request_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+    mtb_ipc_queue_enable_event(&free_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+#else /* !COMPONENT_PSE84*/
     cyhal_ipc_queue_enable_event(&request_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
     cyhal_ipc_queue_enable_event(&free_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
+#endif /*COMPONENT_PSE84*/
     wcm_internal_func_ptr = NULL;
 #ifdef VCM_ENABLE_MQTT
     mqtt_internal_func_ptr = NULL;
@@ -1227,7 +1809,11 @@ cy_rslt_t cy_vcm_deinit()
 #endif
 
     /* De-register the callback for write operation on deinit handling queue */
+#if defined(COMPONENT_PSE84)
+    mtb_ipc_queue_enable_event(&deinit_queue_obj, MTB_IPC_QUEUE_WRITE, false);
+#else /*!COMPONENT_PSE84*/
     cyhal_ipc_queue_enable_event(&deinit_queue_obj, CYHAL_IPC_QUEUE_WRITE, CYHAL_ISR_PRIORITY_DEFAULT, false);
+#endif /*COMPONENT_PSE84*/
 
     if(hal_resource_opt == CY_VCM_CREATE_HAL_RESOURCE)
     {
@@ -1237,11 +1823,24 @@ cy_rslt_t cy_vcm_deinit()
 
             /* Intimate the other core to de-initialize the Virtual Connectivity Manager by passing CY_VCM_EVENT_DEINIT through the de-init queue */
             vcm_event = CY_VCM_EVENT_DEINIT;
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_before_send_ipc();
+#endif
+            result = mtb_ipc_queue_put(&deinit_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+            CY_VCM_ERROR_CHECK(result);
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+            /* Wait for response from the other core on de-init_response_queue */
+            result = mtb_ipc_queue_get(&deinit_rsp_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else /* !COMPONENT_PSE84*/
             result = cyhal_ipc_queue_put(&deinit_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
             CY_VCM_ERROR_CHECK(result);
 
             /* Wait for response from the other core on de-init_response_queue */
             result = cyhal_ipc_queue_get(&deinit_rsp_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif /*COMPONENT_PSE84*/
             CY_VCM_ERROR_CHECK(result);
 
             cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_DEBUG, "%s[%d] Other core  has acknowledged de-initialization of Virtual Connectivity Manager\n", __func__, __LINE__);
@@ -1251,30 +1850,44 @@ cy_rslt_t cy_vcm_deinit()
             /* Delete the init_queue resources if not already removed */
             if(is_vcm_init_complete == false)
             {
+#if defined(COMPONENT_PSE84)
+                mtb_ipc_queue_free(&init_queue_obj);
+#else
                 cyhal_ipc_queue_free(&init_queue_obj);
+#endif
                 init_queue_pool = NULL;
                 init_queue_handle = NULL;
             }
         }
 
         /* Free all queues. Set the queue_handles and queue_pool pointers to NULL */
+#if defined(COMPONENT_PSE84)
+        mtb_ipc_queue_free(&free_queue_obj);
+        mtb_ipc_queue_free(&deinit_rsp_queue_obj);
+        mtb_ipc_queue_free(&deinit_queue_obj);
+        mtb_ipc_queue_free(&async_cb_queue_obj);
+        mtb_ipc_queue_free(&response_queue_obj);
+        mtb_ipc_queue_free(&request_queue_obj);
+#else
         cyhal_ipc_queue_free(&free_queue_obj);
-        free_queue_pool = NULL;
-        free_queue_handle = NULL;
         cyhal_ipc_queue_free(&deinit_rsp_queue_obj);
-        deinit_rsp_queue_pool = NULL;
-        deinit_rsp_queue_handle = NULL;
         cyhal_ipc_queue_free(&deinit_queue_obj);
-        deinit_queue_pool = NULL;
-        deinit_queue_handle = NULL;
         cyhal_ipc_queue_free(&async_cb_queue_obj);
-        async_cb_queue_pool = NULL;
-        async_queue_handle = NULL;
         cyhal_ipc_queue_free(&response_queue_obj);
-        response_queue_pool = NULL;
-        response_queue_handle = NULL;
         cyhal_ipc_queue_free(&request_queue_obj);
+#endif
+        free_queue_pool = NULL;
+        deinit_rsp_queue_pool = NULL;
+        deinit_queue_pool = NULL;
+        async_cb_queue_pool = NULL;
+        response_queue_pool = NULL;
         request_queue_pool = NULL;
+
+        free_queue_handle = NULL;
+        deinit_rsp_queue_handle = NULL;
+        deinit_queue_handle = NULL;
+        async_queue_handle = NULL;
+        response_queue_handle = NULL;
         request_queue_handle = NULL;
     }
     else /* hal_resource_opt = CY_VCM_USE_HAL_RESOURCE */
@@ -1283,11 +1896,24 @@ cy_rslt_t cy_vcm_deinit()
         if(is_dual_core_vcm_initialized == true)
         {
             vcm_event = CY_VCM_EVENT_DEINIT;
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+            wake_cm55_from_cm33_before_send_ipc();
+#endif
+            result = mtb_ipc_queue_put(&deinit_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+            CY_VCM_ERROR_CHECK(result);
+#ifdef COMPONENT_CM33
+            wake_cm55_from_cm33_after_send_ipc();
+#endif
+            /* Wait for response from the other core on de-init_response_queue */
+            result = mtb_ipc_queue_get(&deinit_rsp_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else /* !COMPONENT_PSE84*/
             result = cyhal_ipc_queue_put(&deinit_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
             CY_VCM_ERROR_CHECK(result);
 
             /* Wait for response from the other core on de-init_response_queue */
             result = cyhal_ipc_queue_get(&deinit_rsp_queue_obj, &vcm_event, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif /* COMPONENT_PSE84*/
             CY_VCM_ERROR_CHECK(result);
         }
     }
@@ -1359,7 +1985,14 @@ cy_rslt_t cy_vcm_send_api_request(cy_vcm_request_t* request, cy_vcm_response_t* 
     }
 
     /* Sending API request */
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_before_send_ipc();
+#endif
+    result = mtb_ipc_queue_put(&request_queue_obj, request, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else /*!COMPONENT_PSE84*/
     result = cyhal_ipc_queue_put(&request_queue_obj, request, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif /*COMPONENT_PSE84*/
     if(result != CY_RSLT_SUCCESS)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] Failed to push the API request to the queue. res = 0x%x\n", __func__, __LINE__, result);
@@ -1368,7 +2001,18 @@ cy_rslt_t cy_vcm_send_api_request(cy_vcm_request_t* request, cy_vcm_response_t* 
     }
 
     /* Receive the API response */
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+    cy_rtos_delay_milliseconds(50);
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+    result = mtb_ipc_queue_get(&response_queue_obj, response, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else /*!COMPONENT_PSE84*/
     result = cyhal_ipc_queue_get(&response_queue_obj, response, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif /*COMPONENT_PSE84*/
     if(result != CY_RSLT_SUCCESS)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] Failed to get the API response from the queue. res = 0x%x\n", __func__, __LINE__, result);
@@ -1403,13 +2047,25 @@ void cy_vcm_free(void* ptr)
     /* Send IPC message with the address to primary core who has created the memory so that it can be freed */
     ptr_val = (uint32_t)ptr;
 
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_before_send_ipc();
+#endif
+    result = mtb_ipc_queue_put(&free_queue_obj, &ptr_val, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#else /*!COMPONENT_PSE84*/
     result = cyhal_ipc_queue_put(&free_queue_obj, &ptr_val, CY_VCM_MAX_QUEUE_WAIT_TIME_US);
+#endif /*COMPONENT_PSE84*/
     if(result != CY_RSLT_SUCCESS)
     {
         cy_vcm_log_msg(CYLF_MIDDLEWARE, CY_LOG_ERR, "%s[%d] Failed to push the API request to the queue. res = 0x%x\n", __func__, __LINE__, result);
         cy_rtos_set_mutex(&vcm_request_mutex);
         return;
     }
+#if defined(COMPONENT_PSE84)
+#ifdef COMPONENT_CM33
+    wake_cm55_from_cm33_after_send_ipc();
+#endif
+#endif /*COMPONENT_PSE84*/
 
     cy_rtos_set_mutex(&vcm_request_mutex);
     if(result != CY_RSLT_SUCCESS)

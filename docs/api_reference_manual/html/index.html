@@ -172,13 +172,13 @@ Code snippets</h1>
 Snippet 1: Initialize VCM</h2>
 <p >The following snippet demonstrates how to initialize the VCM library on two cores.</p>
 <div class="fragment"><div class="line"> </div>
-<div class="line"><span class="comment">/***************************** Secondary core ***************************/</span></div>
+<div class="line"><span class="comment">/***************************** CORE1 ***************************/</span></div>
 <div class="line"> </div>
 <div class="line"><span class="comment">/* Flag to be set when VCM initialization is completed on the other core */</span></div>
 <div class="line"><span class="keyword">static</span> <span class="keyword">volatile</span> <span class="keywordtype">bool</span> is_vcm_init_complete = <span class="keyword">false</span>;</div>
 <div class="line"> </div>
-<div class="line"><span class="comment">/* VCM callback registered in the secondary core to handle events from VCM. */</span></div>
-<div class="line"><span class="keywordtype">void</span> vcm_callback_sec_core(<a class="code hl_enumeration" href="group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8">cy_vcm_event_t</a> event)</div>
+<div class="line"><span class="comment">/* VCM callback registered in the CORE1 to handle events from VCM. */</span></div>
+<div class="line"><span class="keywordtype">void</span> vcm_callback_core1(<a class="code hl_enumeration" href="group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8">cy_vcm_event_t</a> event)</div>
 <div class="line">{</div>
 <div class="line"> </div>
 <div class="line">    <span class="keywordflow">switch</span>(event)</div>
@@ -194,16 +194,23 @@ Snippet 1: Initialize VCM</h2>
 <div class="line">    }</div>
 <div class="line">}</div>
 <div class="line"> </div>
-<div class="line"><span class="keywordtype">void</span> snippet_vcm_init_sec_core()</div>
+<div class="line"><span class="keywordtype">void</span> snippet_vcm_init_core1()</div>
 <div class="line">{</div>
 <div class="line">    cy_rslt_t result;</div>
 <div class="line"> </div>
-<div class="line">    <span class="comment">/* Initialize the VCM library on the core that is brought up first. */</span></div>
+<div class="line">    <span class="comment">/* Initialize the VCM library on the core that is brought up first (i.e CM0 for PSOC6 and CM33 for PSOC Edge E84) */</span></div>
 <div class="line">    <a class="code hl_struct" href="structcy__vcm__config__t.html">cy_vcm_config_t</a> config;</div>
 <div class="line"> </div>
-<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#aaa1bef763941e8e0e2b9d17b9afba347">hal_resource_opt</a> = <a class="code hl_enumvalue" href="group__group__vcm__enums.html#gga93ea290ac24436653331b97a293d8511a46e8c2104532a1bbd059f7d8afd0696d">CY_VCM_CREATE_HAL_RESOURCE</a>;</div>
+<div class="line"><span class="preprocessor">#if defined(COMPONENT_PSE84)</span></div>
+<div class="line">    config.ipc_obj = &amp;cybsp_cm33_ipc_instance;</div>
+<div class="line"><span class="preprocessor">#endif</span></div>
+<div class="line"><span class="preprocessor">#if defined(COMPONENT_PSE84)</span></div>
+<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#af46b69e963ce49adbcdaaffec32bc067">channel_num</a> = MTB_IPC_CHAN_1;</div>
+<div class="line"><span class="preprocessor">#else</span></div>
 <div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#af46b69e963ce49adbcdaaffec32bc067">channel_num</a> = CYHAL_IPC_CHAN_0;</div>
-<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#a7ca8a7f9ca3cdfe6ab14d6b7a106b26f">event_cb</a> = vcm_callback_sec_core;</div>
+<div class="line"><span class="preprocessor">#endif</span></div>
+<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#aaa1bef763941e8e0e2b9d17b9afba347">hal_resource_opt</a> = <a class="code hl_enumvalue" href="group__group__vcm__enums.html#gga93ea290ac24436653331b97a293d8511a46e8c2104532a1bbd059f7d8afd0696d">CY_VCM_CREATE_HAL_RESOURCE</a>;</div>
+<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#a7ca8a7f9ca3cdfe6ab14d6b7a106b26f">event_cb</a> = vcm_callback_core1;</div>
 <div class="line"> </div>
 <div class="line">    <span class="comment">/* Initialize VCM */</span></div>
 <div class="line">    result = <a class="code hl_function" href="group__group__vcm__functions.html#ga90b3850590540d4484f32ccb2cedc840">cy_vcm_init</a>(&amp;config);</div>
@@ -214,24 +221,27 @@ Snippet 1: Initialize VCM</h2>
 <div class="line"> </div>
 <div class="line">    <span class="comment">/* Enable the other core. </span></div>
 <div class="line"><span class="comment">     * For example, for enabling CM4, the following code is applicable. </span></div>
-<div class="line"><span class="comment">     * When this is called, the application on the primary core will begin executing. Ensure cy_vcm_init()</span></div>
+<div class="line"><span class="comment">     * When this is called, the application on the CORE2 will begin executing. Ensure cy_vcm_init()</span></div>
 <div class="line"><span class="comment">     * is called on the second core when the execution begins.</span></div>
 <div class="line"><span class="comment">     */</span></div>
+<div class="line"><span class="preprocessor">#if defined(COMPONENT_PSE84)</span></div>
+<div class="line">    Cy_SysEnableCM55(MXCM55, CM55_APP_BOOT_ADDR, CM55_BOOT_WAIT_TIME_USEC);</div>
+<div class="line"><span class="preprocessor">#else</span></div>
 <div class="line">    Cy_SysEnableCM4(CY_CORTEX_M4_APPL_ADDR);</div>
-<div class="line"> </div>
+<div class="line"><span class="preprocessor">#endif</span></div>
 <div class="line">    <span class="comment">/* Wait for CY_VCM_EVENT_INIT_COMPLETE event in the callback. */</span></div>
 <div class="line">    <span class="keywordflow">while</span> ( !is_vcm_init_complete )</div>
 <div class="line">    {</div>
 <div class="line">        cy_rtos_delay_milliseconds(1000);</div>
 <div class="line">    }</div>
 <div class="line"> </div>
-<div class="line">    <span class="comment">/* Proceed to use virtual APIs from the secondary core. */</span></div>
+<div class="line">    <span class="comment">/* Proceed to use virtual APIs from the CORE1. */</span></div>
 <div class="line">}</div>
 <div class="line"> </div>
-<div class="line"><span class="comment">/***************************** Primary core ***************************/</span></div>
+<div class="line"><span class="comment">/***************************** CORE2 ***************************/</span></div>
 <div class="line"> </div>
 <div class="line"><span class="comment">/* VCM callback registered by core 2 application to handle events from VCM. */</span></div>
-<div class="line"><span class="keywordtype">void</span> vcm_callback_prim_core(<a class="code hl_enumeration" href="group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8">cy_vcm_event_t</a> event)</div>
+<div class="line"><span class="keywordtype">void</span> vcm_callback_core2(<a class="code hl_enumeration" href="group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8">cy_vcm_event_t</a> event)</div>
 <div class="line">{</div>
 <div class="line">    <span class="keywordflow">switch</span>(event)</div>
 <div class="line">    {</div>
@@ -245,22 +255,29 @@ Snippet 1: Initialize VCM</h2>
 <div class="line">    }</div>
 <div class="line">}</div>
 <div class="line"> </div>
-<div class="line"><span class="keywordtype">void</span> snippet_vcm_init_prim_core()</div>
+<div class="line"><span class="keywordtype">void</span> snippet_vcm_init_core2()</div>
 <div class="line">{</div>
 <div class="line">    cy_rslt_t result;</div>
 <div class="line"> </div>
-<div class="line">    <span class="comment">/* When the primary core is enabled, initalize VCM library with the below configurations. */</span></div>
+<div class="line">    <span class="comment">/* When the CORE2 is enabled, initalize VCM library with the below configurations. */</span></div>
 <div class="line">    <a class="code hl_struct" href="structcy__vcm__config__t.html">cy_vcm_config_t</a> config;</div>
 <div class="line"> </div>
-<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#aaa1bef763941e8e0e2b9d17b9afba347">hal_resource_opt</a> = <a class="code hl_enumvalue" href="group__group__vcm__enums.html#gga93ea290ac24436653331b97a293d8511a52e81e77226331e21886d507c470b2c9">CY_VCM_USE_HAL_RESOURCE</a>;</div>
+<div class="line"><span class="preprocessor">#if defined(COMPONENT_PSE84)</span></div>
+<div class="line">    config.ipc_obj = &amp;cybsp_cm55_ipc_instance;</div>
+<div class="line"><span class="preprocessor">#endif</span></div>
+<div class="line"><span class="preprocessor">#if defined(COMPONENT_PSE84)</span></div>
+<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#af46b69e963ce49adbcdaaffec32bc067">channel_num</a> = MTB_IPC_CHAN_1;</div>
+<div class="line"><span class="preprocessor">#else</span></div>
 <div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#af46b69e963ce49adbcdaaffec32bc067">channel_num</a> = CYHAL_IPC_CHAN_0;</div>
-<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#a7ca8a7f9ca3cdfe6ab14d6b7a106b26f">event_cb</a> = vcm_callback_prim_core;</div>
+<div class="line"><span class="preprocessor">#endif</span></div>
+<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#aaa1bef763941e8e0e2b9d17b9afba347">hal_resource_opt</a> = <a class="code hl_enumvalue" href="group__group__vcm__enums.html#gga93ea290ac24436653331b97a293d8511a52e81e77226331e21886d507c470b2c9">CY_VCM_USE_HAL_RESOURCE</a>;</div>
+<div class="line">    config.<a class="code hl_variable" href="structcy__vcm__config__t.html#a7ca8a7f9ca3cdfe6ab14d6b7a106b26f">event_cb</a> = vcm_callback_core2;</div>
 <div class="line"> </div>
-<div class="line">    <span class="comment">/* Initialize VCM. This will cause CY_VCM_EVENT_INIT_COMPLETE event to be received on the secondary core. */</span></div>
+<div class="line">    <span class="comment">/* Initialize VCM. This will cause CY_VCM_EVENT_INIT_COMPLETE event to be received on CORE1. */</span></div>
 <div class="line">    result = <a class="code hl_function" href="group__group__vcm__functions.html#ga90b3850590540d4484f32ccb2cedc840">cy_vcm_init</a>(&amp;config);</div>
 <div class="line">    <span class="keywordflow">if</span>(result != CY_RSLT_SUCCESS)</div>
 <div class="line">    {</div>
-<div class="line">        printf(<span class="stringliteral">&quot;\ncy_vcm_init failed on the primary core....!\n&quot;</span>);</div>
+<div class="line">        printf(<span class="stringliteral">&quot;\ncy_vcm_init failed on the CORE2....!\n&quot;</span>);</div>
 <div class="line">    }</div>
 <div class="line"> </div>
 <div class="line">    <span class="comment">/* Proceed with the rest of the application logic. */</span></div>
@@ -272,14 +289,14 @@ Snippet 1: Initialize VCM</h2>
 <div class="ttc" id="agroup__group__vcm__enums_html_gga93ea290ac24436653331b97a293d8511a52e81e77226331e21886d507c470b2c9"><div class="ttname"><a href="group__group__vcm__enums.html#gga93ea290ac24436653331b97a293d8511a52e81e77226331e21886d507c470b2c9">CY_VCM_USE_HAL_RESOURCE</a></div><div class="ttdeci">@ CY_VCM_USE_HAL_RESOURCE</div><div class="ttdoc">Option to be set during cy_vcm_init in the core which initializes VCM second.</div><div class="ttdef"><b>Definition:</b> cy_vcm.h:87</div></div>
 <div class="ttc" id="agroup__group__vcm__functions_html_ga90b3850590540d4484f32ccb2cedc840"><div class="ttname"><a href="group__group__vcm__functions.html#ga90b3850590540d4484f32ccb2cedc840">cy_vcm_init</a></div><div class="ttdeci">cy_rslt_t cy_vcm_init(cy_vcm_config_t *config)</div><div class="ttdoc">Initializes the virtual connectivity manager.</div></div>
 <div class="ttc" id="astructcy__vcm__config__t_html"><div class="ttname"><a href="structcy__vcm__config__t.html">cy_vcm_config_t</a></div><div class="ttdoc">Virtual-Connectivity-Manager config structure.</div><div class="ttdef"><b>Definition:</b> cy_vcm.h:124</div></div>
-<div class="ttc" id="astructcy__vcm__config__t_html_a7ca8a7f9ca3cdfe6ab14d6b7a106b26f"><div class="ttname"><a href="structcy__vcm__config__t.html#a7ca8a7f9ca3cdfe6ab14d6b7a106b26f">cy_vcm_config_t::event_cb</a></div><div class="ttdeci">cy_vcm_event_callback_t event_cb</div><div class="ttdoc">Callback function which receives the VCM events.</div><div class="ttdef"><b>Definition:</b> cy_vcm.h:127</div></div>
-<div class="ttc" id="astructcy__vcm__config__t_html_aaa1bef763941e8e0e2b9d17b9afba347"><div class="ttname"><a href="structcy__vcm__config__t.html#aaa1bef763941e8e0e2b9d17b9afba347">cy_vcm_config_t::hal_resource_opt</a></div><div class="ttdeci">cy_vcm_hal_resource_opt_t hal_resource_opt</div><div class="ttdoc">This is used to identify the core that should create the HAL resources.</div><div class="ttdef"><b>Definition:</b> cy_vcm.h:125</div></div>
-<div class="ttc" id="astructcy__vcm__config__t_html_af46b69e963ce49adbcdaaffec32bc067"><div class="ttname"><a href="structcy__vcm__config__t.html#af46b69e963ce49adbcdaaffec32bc067">cy_vcm_config_t::channel_num</a></div><div class="ttdeci">uint32_t channel_num</div><div class="ttdoc">IPC channel number passed by user during initialization (e.g.</div><div class="ttdef"><b>Definition:</b> cy_vcm.h:126</div></div>
+<div class="ttc" id="astructcy__vcm__config__t_html_a7ca8a7f9ca3cdfe6ab14d6b7a106b26f"><div class="ttname"><a href="structcy__vcm__config__t.html#a7ca8a7f9ca3cdfe6ab14d6b7a106b26f">cy_vcm_config_t::event_cb</a></div><div class="ttdeci">cy_vcm_event_callback_t event_cb</div><div class="ttdoc">Callback function which receives the VCM events.</div><div class="ttdef"><b>Definition:</b> cy_vcm.h:130</div></div>
+<div class="ttc" id="astructcy__vcm__config__t_html_aaa1bef763941e8e0e2b9d17b9afba347"><div class="ttname"><a href="structcy__vcm__config__t.html#aaa1bef763941e8e0e2b9d17b9afba347">cy_vcm_config_t::hal_resource_opt</a></div><div class="ttdeci">cy_vcm_hal_resource_opt_t hal_resource_opt</div><div class="ttdoc">This is used to identify the core that should create the HAL resources.</div><div class="ttdef"><b>Definition:</b> cy_vcm.h:128</div></div>
+<div class="ttc" id="astructcy__vcm__config__t_html_af46b69e963ce49adbcdaaffec32bc067"><div class="ttname"><a href="structcy__vcm__config__t.html#af46b69e963ce49adbcdaaffec32bc067">cy_vcm_config_t::channel_num</a></div><div class="ttdeci">uint32_t channel_num</div><div class="ttdoc">IPC channel number passed by user during initialization (e.g.</div><div class="ttdef"><b>Definition:</b> cy_vcm.h:129</div></div>
 </div><!-- fragment --><h2><a class="anchor" id="snip2"></a>
 Snippet 2: Deinitialize VCM</h2>
 <p >The following snippet demonstrates how to deinitialize the VCM library from two cores.</p>
 <div class="fragment"><div class="line"> </div>
-<div class="line"><span class="comment">/***************************** Secondary core ***************************/</span></div>
+<div class="line"><span class="comment">/***************************** CORE1 ***************************/</span></div>
 <div class="line"> </div>
 <div class="line"><span class="comment">/* Flag that is set when VCM deinit is started by the other core. </span></div>
 <div class="line"><span class="comment"> * When this event is received, call cy_vcm_deinit() to deinitialize VCM</span></div>
@@ -287,8 +304,8 @@ Snippet 2: Deinitialize VCM</h2>
 <div class="line"><span class="comment"> */</span></div>
 <div class="line"><span class="keyword">static</span> <span class="keywordtype">bool</span> is_vcm_deinit_requested_1 = <span class="keyword">false</span>;</div>
 <div class="line"> </div>
-<div class="line"><span class="comment">/* VCM callback registered in secondary core to handle events from VCM. */</span></div>
-<div class="line"><span class="keywordtype">void</span> vcm_callback_prim_core_2(<a class="code hl_enumeration" href="group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8">cy_vcm_event_t</a> event)</div>
+<div class="line"><span class="comment">/* VCM callback registered in CORE1 to handle events from VCM. */</span></div>
+<div class="line"><span class="keywordtype">void</span> vcm_callback_core1_1(<a class="code hl_enumeration" href="group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8">cy_vcm_event_t</a> event)</div>
 <div class="line">{</div>
 <div class="line">    cy_rslt_t result;</div>
 <div class="line"> </div>
@@ -305,8 +322,8 @@ Snippet 2: Deinitialize VCM</h2>
 <div class="line">    }</div>
 <div class="line">}</div>
 <div class="line"> </div>
-<div class="line"><span class="comment">/* Secondary core initiates VCM deinitialization. */</span></div>
-<div class="line"><span class="keywordtype">void</span> snippet_vcm_deinit_sec_core()</div>
+<div class="line"><span class="comment">/* CORE1 initiates VCM deinitialization. */</span></div>
+<div class="line"><span class="keywordtype">void</span> snippet_vcm_deinit_core1()</div>
 <div class="line">{</div>
 <div class="line">    cy_rslt_t result;</div>
 <div class="line"> </div>
@@ -314,7 +331,7 @@ Snippet 2: Deinitialize VCM</h2>
 <div class="line"> </div>
 <div class="line">    <span class="comment">/* ... */</span></div>
 <div class="line"> </div>
-<div class="line">    <span class="comment">/* VCM is no longer needed. Call deinit on secondary core. */</span></div>
+<div class="line">    <span class="comment">/* VCM is no longer needed. Call deinit on CORE1. */</span></div>
 <div class="line">    result = <a class="code hl_function" href="group__group__vcm__functions.html#ga942cb710358237f8d857d6f195564cc2">cy_vcm_deinit</a>();</div>
 <div class="line">    <span class="keywordflow">if</span>( result != CY_RSLT_SUCCESS )</div>
 <div class="line">    {</div>
@@ -322,7 +339,7 @@ Snippet 2: Deinitialize VCM</h2>
 <div class="line">    }</div>
 <div class="line">}</div>
 <div class="line"> </div>
-<div class="line"><span class="comment">/***************************** Primary core ***************************/</span></div>
+<div class="line"><span class="comment">/***************************** CORE2 ***************************/</span></div>
 <div class="line"> </div>
 <div class="line"><span class="comment">/* Flag that is set when VCM deinit is started by the other core. </span></div>
 <div class="line"><span class="comment"> * When this event is received, call cy_vcm_deinit() to deinitialize VCM</span></div>
@@ -330,8 +347,8 @@ Snippet 2: Deinitialize VCM</h2>
 <div class="line"><span class="comment"> */</span></div>
 <div class="line"><span class="keyword">static</span> <span class="keywordtype">bool</span> is_vcm_deinit_requested = <span class="keyword">false</span>;</div>
 <div class="line"> </div>
-<div class="line"><span class="comment">/* VCM callback registered in primary core to handle events from VCM. */</span></div>
-<div class="line"><span class="keywordtype">void</span> vcm_callback_prim_core_2(<a class="code hl_enumeration" href="group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8">cy_vcm_event_t</a> event)</div>
+<div class="line"><span class="comment">/* VCM callback registered in CORE2 to handle events from VCM. */</span></div>
+<div class="line"><span class="keywordtype">void</span> vcm_callback_core2_2(<a class="code hl_enumeration" href="group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8">cy_vcm_event_t</a> event)</div>
 <div class="line">{</div>
 <div class="line">    cy_rslt_t result;</div>
 <div class="line"> </div>
@@ -348,10 +365,10 @@ Snippet 2: Deinitialize VCM</h2>
 <div class="line">    }</div>
 <div class="line">}</div>
 <div class="line"> </div>
-<div class="line"><span class="comment">/* Primary core waits for deinit to be started by the secondary core. When CY_VCM_EVENT_DEINIT</span></div>
+<div class="line"><span class="comment">/* CORE2 waits for deinit to be started by the CORE1. When CY_VCM_EVENT_DEINIT</span></div>
 <div class="line"><span class="comment"> * event is received in the application callback, VCM is deinitialized locally.</span></div>
 <div class="line"><span class="comment"> */</span></div>
-<div class="line"><span class="keywordtype">void</span> snippet_vcm_deinit_prim_core()</div>
+<div class="line"><span class="keywordtype">void</span> snippet_vcm_deinit_core2()</div>
 <div class="line">{</div>
 <div class="line">    cy_rslt_t result;</div>
 <div class="line"> </div>
@@ -370,7 +387,7 @@ Snippet 2: Deinitialize VCM</h2>
 <div class="line">    result = <a class="code hl_function" href="group__group__vcm__functions.html#ga942cb710358237f8d857d6f195564cc2">cy_vcm_deinit</a>();</div>
 <div class="line">    <span class="keywordflow">if</span>( result != CY_RSLT_SUCCESS )</div>
 <div class="line">    {</div>
-<div class="line">        printf(<span class="stringliteral">&quot;\n cy_vcm_deinit failed on primary core! \n&quot;</span>);</div>
+<div class="line">        printf(<span class="stringliteral">&quot;\n cy_vcm_deinit failed on CORE2! \n&quot;</span>);</div>
 <div class="line">        <span class="keywordflow">return</span>;</div>
 <div class="line">    }</div>
 <div class="line">}</div>
