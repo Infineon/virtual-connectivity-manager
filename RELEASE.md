@@ -6,18 +6,22 @@ See the [README.md](./README.md) for a complete description of the Virtual Conne
 
 ## Changelog
 
+### v1.2.0
+
+- Added support for PSOC&trade; Edge E84 (PSE84) platform on LLVM_ARM toolchain.
+
 ### v1.1.0
 
 - Added support for PSOC&trade; Edge E84 (PSE84) platform on GCC_ARM, ARM and IAR toolchains.
 
 ### v1.0.4
 
--Minor documentation update
--Added .cyignore
+- Minor documentation update
+- Added .cyignore
 
 ### v1.0.3
 
--Minor documentation update
+- Minor documentation update
 
 ### v1.0.2
 
