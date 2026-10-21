@@ -425,6 +425,35 @@ th.dirtab {
 	font-weight: bold;
 }
 
+/* Left-align markdown tables (:---) rendered by Doxygen. */
+table.markdownTable {
+	border-collapse: collapse;
+	margin-top: 4px;
+	margin-bottom: 4px;
+}
+
+table.markdownTable td, table.markdownTable th {
+	border: 1px solid #2D4068;
+	padding: 3px 7px 2px;
+}
+
+table.markdownTableHead th {
+	background-color: #374F7F;
+	color: #FFFFFF;
+}
+
+th.markdownTableHeadLeft, td.markdownTableBodyLeft {
+	text-align: left;
+}
+
+th.markdownTableHeadRight, td.markdownTableBodyRight {
+	text-align: right;
+}
+
+th.markdownTableHeadCenter, td.markdownTableBodyCenter {
+	text-align: center;
+}
+
 hr {
 	height: 0px;
 	border: none;

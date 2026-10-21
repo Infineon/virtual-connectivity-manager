@@ -25,8 +25,8 @@
 var NAVTREE =
 [
   [ "Virtual Connectivity Manager Library", "index.html", [
-    [ "Overview", "index.html", null ],
-    [ "API Reference", "modules.html", "modules" ]
+    [ "Virtual Connectivity Manager (VCM) — Multi-Core Connectivity via IPC Virtualization", "index.html", null ],
+    [ "API Reference", "topics.html", "topics" ]
   ] ]
 ];
 

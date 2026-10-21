@@ -1,4 +1,29 @@
 var searchData=
 [
-  ['typedefs_0',['Typedefs',['../group__group__vcm__typedefs.html',1,'']]]
+  ['c_0',['c',['../index.html#autotoc_md16',1,'Primary core (main.c)'],['../index.html#autotoc_md17',1,'Secondary core (main.c)']]],
+  ['changelog_1',['changelog',['../md__2builds_2repo_2virtual-connectivity-manager_2_r_e_l_e_a_s_e.html#autotoc_md32',1,'Changelog'],['../index.html#autotoc_md26',1,'Release Notes and Changelog']]],
+  ['channel_5fnum_2',['channel_num',['../structcy__vcm__config__t.html#af46b69e963ce49adbcdaaffec32bc067',1,'cy_vcm_config_t']]],
+  ['choose_20starting_20template_3',['Choose Starting Template',['../index.html#autotoc_md8',1,'']]],
+  ['code_4',['Sample Code',['../index.html#autotoc_md15',1,'']]],
+  ['code_20examples_5',['Related Code Examples',['../index.html#autotoc_md24',1,'']]],
+  ['configuration_20reference_6',['Configuration Reference',['../index.html#autotoc_md25',1,'']]],
+  ['configure_20in_20the_20tool_7',['Configure in the Tool',['../index.html#autotoc_md11',1,'']]],
+  ['configure_20makefile_8',['Configure Makefile',['../index.html#autotoc_md10',1,'']]],
+  ['connectivity_20manager_20library_9',['Virtual Connectivity Manager library',['../md__2builds_2repo_2virtual-connectivity-manager_2_r_e_l_e_a_s_e.html',1,'']]],
+  ['connectivity_20manager_20vcm_20—_20multi_20core_20connectivity_20via_20ipc_20virtualization_10',['Virtual Connectivity Manager (VCM) — Multi-Core Connectivity via IPC Virtualization',['../index.html',1,'']]],
+  ['copyright_11',['Copyright',['../index.html#autotoc_md29',1,'']]],
+  ['core_20application_12',['Enable logs in a dual-core application',['../index.html#autotoc_md22',1,'']]],
+  ['core_20connectivity_20via_20ipc_20virtualization_13',['Virtual Connectivity Manager (VCM) — Multi-Core Connectivity via IPC Virtualization',['../index.html',1,'']]],
+  ['core_20main_20c_14',['core main c',['../index.html#autotoc_md16',1,'Primary core (main.c)'],['../index.html#autotoc_md17',1,'Secondary core (main.c)']]],
+  ['core_20virtual_20api_20usage_15',['Multi-Core (Virtual API) Usage',['../index.html#autotoc_md14',1,'']]],
+  ['cy_5fvcm_5fconfig_5ft_16',['cy_vcm_config_t',['../structcy__vcm__config__t.html',1,'']]],
+  ['cy_5fvcm_5fcreate_5fhal_5fresource_17',['CY_VCM_CREATE_HAL_RESOURCE',['../group__group__vcm__enums.html#gga93ea290ac24436653331b97a293d8511a46e8c2104532a1bbd059f7d8afd0696d',1,'cy_vcm.h']]],
+  ['cy_5fvcm_5fdeinit_18',['cy_vcm_deinit',['../group__group__vcm__functions.html#ga942cb710358237f8d857d6f195564cc2',1,'cy_vcm.h']]],
+  ['cy_5fvcm_5fevent_5fcallback_5ft_19',['cy_vcm_event_callback_t',['../group__group__vcm__typedefs.html#ga2f5ad5791a4f13d0e4e2352ecdd3bf4c',1,'cy_vcm.h']]],
+  ['cy_5fvcm_5fevent_5fdeinit_20',['CY_VCM_EVENT_DEINIT',['../group__group__vcm__enums.html#gga7442d31f511ef3c01f4c68caf96eb5a8adc18bb166e7f1c0135ce8aa0f52b4811',1,'cy_vcm.h']]],
+  ['cy_5fvcm_5fevent_5finit_5fcomplete_21',['CY_VCM_EVENT_INIT_COMPLETE',['../group__group__vcm__enums.html#gga7442d31f511ef3c01f4c68caf96eb5a8a4797bbe32ca2fa7aeee7401a7dffeff4',1,'cy_vcm.h']]],
+  ['cy_5fvcm_5fevent_5ft_22',['cy_vcm_event_t',['../group__group__vcm__enums.html#ga7442d31f511ef3c01f4c68caf96eb5a8',1,'cy_vcm.h']]],
+  ['cy_5fvcm_5fhal_5fresource_5fopt_5ft_23',['cy_vcm_hal_resource_opt_t',['../group__group__vcm__enums.html#ga93ea290ac24436653331b97a293d8511',1,'cy_vcm.h']]],
+  ['cy_5fvcm_5finit_24',['cy_vcm_init',['../group__group__vcm__functions.html#ga90b3850590540d4484f32ccb2cedc840',1,'cy_vcm.h']]],
+  ['cy_5fvcm_5fuse_5fhal_5fresource_25',['CY_VCM_USE_HAL_RESOURCE',['../group__group__vcm__enums.html#gga93ea290ac24436653331b97a293d8511a52e81e77226331e21886d507c470b2c9',1,'cy_vcm.h']]]
 ];
